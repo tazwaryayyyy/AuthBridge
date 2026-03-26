@@ -467,6 +467,10 @@ async def run_pa_workflow(scenario: str = "humira", show_appeal: bool = False):
         else:
             print(f"\n  ✗ Appeal generation failed: {appeal_result.get('error')}")
 
+    appeal_status = ""
+    if show_appeal:
+        appeal_status = f"  Appeal Letter : {'✓ Generated' if appeal_result.get('success') else '✗ Failed'}"
+
     print_header("AUTHBRIDGE WORKFLOW COMPLETE")
     print(f"""
   Summary:
@@ -476,8 +480,7 @@ async def run_pa_workflow(scenario: str = "humira", show_appeal: bool = False):
   Match Score   : {match_result.get('score', 0)}/100
   Recommendation: {match_result.get('recommendation', 'UNKNOWN')}
   Letter Status : {'✓ Generated' if letter_result.get('success') else '✗ Failed'}
-  {'Appeal Letter : ✓ Generated' if show_appeal and appeal_result.get('success') else ''}
-
+{appeal_status}
   Total tools called: {4 + (2 if show_appeal else 0)}
   AuthBridge turned a multi-hour PA task into seconds.
   ─────────────────────────────────────────────
@@ -488,7 +491,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AuthBridge Demo Test")
     parser.add_argument(
         "--scenario",
-        choices=["humira", "ozempic"],
+        choices=["humira", "ozempic", "keytruda"],
         default="humira",
         help="Which synthetic patient scenario to run"
     )

@@ -34,7 +34,7 @@ def _safe_get_text(resource: dict, field: str) -> str:
 async def _fhir_get(client: httpx.AsyncClient, path: str, params: dict) -> list:
     """Make a FHIR GET request and return entries safely."""
     try:
-        response = await client.get(f"{HAPI_FHIR_BASE}/{path}", params=params)
+        response = await client.get(f"/{path}", params=params)
         response.raise_for_status()
         return response.json().get("entry", [])
     except Exception as e:

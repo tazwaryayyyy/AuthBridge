@@ -172,7 +172,7 @@ Generates a formal appeal letter contesting a PA denial.
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/authbridge-mcp
+git clone https://github.com/tazwaryayyyy/AuthBridge
 cd authbridge-mcp
 
 # Install dependencies
@@ -355,4 +355,4 @@ MIT License — open for the entire healthcare AI ecosystem.
 ---
 
 *Built for the Agents Assemble: Healthcare AI Endgame Challenge 2026*
-*Prompt Opinion Platform · MCP + A2A + FHIR R4 · $25,000 Prize Pool*
+*Prompt Opinion Platform · MCP + A2A + FHIR R4*
