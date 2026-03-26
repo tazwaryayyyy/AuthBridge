@@ -1,0 +1,305 @@
+{
+  "adalimumab_humira": {
+    "drug_name": "Adalimumab (Humira)",
+    "brand_names": ["humira", "adalimumab", "hyrimoz", "hadlima", "abrilada"],
+    "drug_class": "TNF-alpha inhibitor (biologic)",
+    "indications": [
+      {
+        "name": "Moderate-to-severe Crohn's disease",
+        "icd10_codes": ["K50.00", "K50.10", "K50.80", "K50.90"],
+        "required_criteria": [
+          "Diagnosis of moderate-to-severe Crohn's disease confirmed by endoscopy, colonoscopy, or imaging (CT/MRI enterography)",
+          "Failure, intolerance, or contraindication to at least one conventional therapy (corticosteroids such as prednisone, AND at least one immunomodulator: azathioprine, 6-mercaptopurine, or methotrexate)",
+          "Negative tuberculosis test (TST or IGRA) within 6 months prior to initiation",
+          "Hepatitis B surface antigen screening completed and documented",
+          "Patient is not currently pregnant or breastfeeding (or risk/benefit discussed and documented)"
+        ],
+        "step_therapy_required": ["prednisone", "azathioprine", "mercaptopurine", "6-mercaptopurine", "methotrexate"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation", "Procedure"],
+        "clinical_guideline": "ECCO Guidelines for Crohn's Disease 2023; ACG Clinical Guideline 2021",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "BCBS", "Cigna", "Humana"]
+      },
+      {
+        "name": "Moderate-to-severe rheumatoid arthritis",
+        "icd10_codes": ["M06.00", "M06.09", "M05.79", "M05.89"],
+        "required_criteria": [
+          "Diagnosis of moderate-to-severe rheumatoid arthritis confirmed by rheumatologist",
+          "DAS28 score > 3.2 or CDAI score > 10 documented",
+          "Failure or inadequate response to at least two DMARDs including methotrexate",
+          "Negative TB test and hepatitis B screening within 6 months"
+        ],
+        "step_therapy_required": ["methotrexate", "hydroxychloroquine", "sulfasalazine", "leflunomide"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation"],
+        "clinical_guideline": "ACR Guidelines for RA 2021",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "BCBS"]
+      }
+    ]
+  },
+  "semaglutide_ozempic": {
+    "drug_name": "Semaglutide (Ozempic)",
+    "brand_names": ["ozempic", "semaglutide", "wegovy", "rybelsus"],
+    "drug_class": "GLP-1 receptor agonist",
+    "indications": [
+      {
+        "name": "Type 2 Diabetes Mellitus",
+        "icd10_codes": ["E11.9", "E11.65", "E11.69", "E11.00", "E11.649"],
+        "required_criteria": [
+          "Confirmed diagnosis of Type 2 Diabetes Mellitus",
+          "HbA1c >= 7.5% documented within the last 3 months",
+          "Failure, inadequate response, or documented contraindication to metformin at maximum tolerated dose for at least 3 months",
+          "BMI >= 27 kg/m2 documented within the last 12 months",
+          "Prescriber is endocrinologist, primary care physician, or internist with documented diabetes management experience",
+          "eGFR >= 30 mL/min/1.73m2 (renal function documented)"
+        ],
+        "step_therapy_required": ["metformin"],
+        "supporting_fhir_resources": ["Condition", "Observation", "MedicationStatement", "MedicationRequest"],
+        "clinical_guideline": "ADA Standards of Medical Care in Diabetes 2024; AACE/ACE Comprehensive Diabetes Management Algorithm 2023",
+        "typical_payers": ["UnitedHealthcare", "Cigna", "BCBS", "Aetna", "CVS Caremark"]
+      }
+    ]
+  },
+  "pembrolizumab_keytruda": {
+    "drug_name": "Pembrolizumab (Keytruda)",
+    "brand_names": ["keytruda", "pembrolizumab"],
+    "drug_class": "PD-1 checkpoint inhibitor (immunotherapy)",
+    "indications": [
+      {
+        "name": "Non-small cell lung cancer (NSCLC) — first-line monotherapy",
+        "icd10_codes": ["C34.10", "C34.11", "C34.12", "C34.90", "C34.32"],
+        "required_criteria": [
+          "Histologically or cytologically confirmed NSCLC diagnosis with pathology report on file",
+          "PD-L1 tumor proportion score (TPS) >= 50% confirmed by FDA-approved diagnostic test (22C3 antibody)",
+          "EGFR mutation status documented as negative (wildtype)",
+          "ALK rearrangement status documented as negative",
+          "ROS1 rearrangement status documented (or testing not indicated due to non-adenocarcinoma histology)",
+          "ECOG performance status 0 or 1 documented within 30 days",
+          "No active autoimmune disease requiring systemic immunosuppressive therapy within 2 years",
+          "No prior systemic chemotherapy for metastatic NSCLC",
+          "Prescriber is board-certified oncologist or hematologist/oncologist"
+        ],
+        "step_therapy_required": [],
+        "supporting_fhir_resources": ["Condition", "DiagnosticReport", "Observation", "Procedure", "Practitioner"],
+        "clinical_guideline": "NCCN Clinical Practice Guidelines in Oncology: NSCLC v2.2024; ASCO 2023 Update",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "Medicare Advantage", "BCBS", "Cigna"]
+      }
+    ]
+  },
+  "dupilumab_dupixent": {
+    "drug_name": "Dupilumab (Dupixent)",
+    "brand_names": ["dupixent", "dupilumab"],
+    "drug_class": "IL-4/IL-13 receptor antagonist (biologic)",
+    "indications": [
+      {
+        "name": "Moderate-to-severe atopic dermatitis",
+        "icd10_codes": ["L20.81", "L20.82", "L20.89", "L20.9", "L28.0"],
+        "required_criteria": [
+          "Diagnosis of moderate-to-severe atopic dermatitis confirmed by board-certified dermatologist",
+          "EASI score >= 16 OR IGA score >= 3 documented within last 6 months",
+          "Inadequate response or intolerance to at least two prescription-strength topical corticosteroids of different potency classes used for at least 4 weeks each",
+          "Inadequate response, intolerance, or contraindication to at least one systemic immunosuppressant (cyclosporine, methotrexate, azathioprine, or mycophenolate mofetil)",
+          "Patient age >= 6 years",
+          "Baseline complete blood count and liver function tests documented"
+        ],
+        "step_therapy_required": ["triamcinolone", "betamethasone", "clobetasol", "fluticasone", "cyclosporine", "methotrexate"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation", "Procedure"],
+        "clinical_guideline": "AAD-NPF Guidelines of Care for Atopic Dermatitis 2023; EADV Guidelines 2022",
+        "typical_payers": ["Cigna", "Aetna", "BCBS", "UnitedHealthcare", "Molina"]
+      }
+    ]
+  },
+  "rivaroxaban_xarelto": {
+    "drug_name": "Rivaroxaban (Xarelto)",
+    "brand_names": ["xarelto", "rivaroxaban"],
+    "drug_class": "Factor Xa inhibitor (DOAC)",
+    "indications": [
+      {
+        "name": "Stroke prevention in non-valvular atrial fibrillation",
+        "icd10_codes": ["I48.0", "I48.11", "I48.19", "I48.20", "I48.21", "I48.91"],
+        "required_criteria": [
+          "Confirmed diagnosis of non-valvular atrial fibrillation (ECG or Holter documentation)",
+          "CHA2DS2-VASc score >= 2 for men, >= 3 for women — documented calculation on file",
+          "One of the following: (a) Documented contraindication to warfarin, (b) Documented INR instability on warfarin with TTR < 60% over 6 months, (c) History of warfarin-related bleeding complication, (d) Patient preference with shared decision-making documented",
+          "Renal function documented: CrCl >= 15 mL/min (Cockcroft-Gault formula)",
+          "No concurrent use of other anticoagulants or antiplatelet combination without documented clinical justification",
+          "No mechanical heart valve prosthesis"
+        ],
+        "step_therapy_required": ["warfarin"],
+        "supporting_fhir_resources": ["Condition", "Observation", "MedicationStatement", "DiagnosticReport"],
+        "clinical_guideline": "AHA/ACC/HRS Guideline for AF 2023; CHEST Antithrombotic Therapy Guidelines 2022",
+        "typical_payers": ["UnitedHealthcare", "Humana", "Cigna", "BCBS", "Aetna"]
+      }
+    ]
+  },
+  "apremilast_otezla": {
+    "drug_name": "Apremilast (Otezla)",
+    "brand_names": ["otezla", "apremilast"],
+    "drug_class": "PDE4 inhibitor (oral small molecule)",
+    "indications": [
+      {
+        "name": "Moderate-to-severe plaque psoriasis",
+        "icd10_codes": ["L40.0", "L40.1", "L40.4", "L40.8", "L40.9"],
+        "required_criteria": [
+          "Diagnosis of moderate-to-severe plaque psoriasis confirmed by dermatologist",
+          "BSA involvement >= 10% OR DLQI score >= 10 OR PASI score >= 10 documented",
+          "Inadequate response or intolerance to at least two topical therapies (topical corticosteroids, vitamin D analogues, retinoids, or coal tar) used for minimum 3 months",
+          "Inadequate response, contraindication, or intolerance to at least one conventional systemic agent (methotrexate, cyclosporine, or acitretin) OR phototherapy (UVB or PUVA) if available",
+          "No severe renal impairment (CrCl < 30 mL/min requires dose reduction, must be documented)",
+          "Prescriber is dermatologist or rheumatologist (for psoriatic arthritis indication)"
+        ],
+        "step_therapy_required": ["methotrexate", "cyclosporine", "acitretin"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation", "Procedure"],
+        "clinical_guideline": "AAD-NPF Guidelines for Psoriasis 2020; Joint AAD-NPF 2023 Biologic Guidance",
+        "typical_payers": ["UnitedHealthcare", "BCBS", "Cigna", "Aetna", "Anthem"]
+      }
+    ]
+  },
+  "sacubitril_valsartan_entresto": {
+    "drug_name": "Sacubitril/Valsartan (Entresto)",
+    "brand_names": ["entresto", "sacubitril", "valsartan sacubitril"],
+    "drug_class": "ARNI (angiotensin receptor-neprilysin inhibitor)",
+    "indications": [
+      {
+        "name": "Heart failure with reduced ejection fraction (HFrEF)",
+        "icd10_codes": ["I50.20", "I50.21", "I50.22", "I50.23", "I50.30", "I50.31", "I50.32"],
+        "required_criteria": [
+          "Diagnosis of chronic heart failure with LVEF <= 40% documented by echocardiogram, cardiac MRI, or nuclear study within 12 months",
+          "NYHA functional class II or III symptoms documented",
+          "Current treatment with a stable dose of an ACE inhibitor OR ARB for at least 4 weeks prior to initiation",
+          "Adequate blood pressure: systolic BP >= 100 mmHg at time of initiation",
+          "eGFR >= 30 mL/min/1.73m2 (renal function documented within 3 months)",
+          "Potassium < 5.4 mEq/L (documented within 3 months)",
+          "No history of angioedema related to previous ACE inhibitor or ARB therapy",
+          "36-hour washout period if switching from ACE inhibitor must be documented or planned",
+          "Prescriber is cardiologist or heart failure specialist"
+        ],
+        "step_therapy_required": ["lisinopril", "enalapril", "ramipril", "losartan", "valsartan", "candesartan", "carvedilol", "metoprolol"],
+        "supporting_fhir_resources": ["Condition", "Observation", "MedicationStatement", "DiagnosticReport", "Procedure"],
+        "clinical_guideline": "ACC/AHA/HFSA 2022 Heart Failure Guideline; ESC 2021 Heart Failure Guidelines",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "BCBS", "Humana", "Medicare Advantage"]
+      }
+    ]
+  },
+  "ustekinumab_stelara": {
+    "drug_name": "Ustekinumab (Stelara)",
+    "brand_names": ["stelara", "ustekinumab"],
+    "drug_class": "IL-12/23 inhibitor (biologic)",
+    "indications": [
+      {
+        "name": "Moderate-to-severe Crohn's disease — biologic-experienced",
+        "icd10_codes": ["K50.00", "K50.10", "K50.80", "K50.90"],
+        "required_criteria": [
+          "Confirmed moderate-to-severe Crohn's disease by endoscopy or imaging",
+          "Failure, loss of response, or intolerance to at least one TNF-alpha inhibitor (adalimumab, infliximab, or certolizumab pegol)",
+          "Failure or inadequate response to conventional therapies (corticosteroids and immunomodulators)",
+          "Negative TB test and hepatitis B screening within 6 months",
+          "No active serious infection at time of initiation",
+          "Prescriber is gastroenterologist"
+        ],
+        "step_therapy_required": ["adalimumab", "infliximab", "certolizumab", "azathioprine", "prednisone"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation", "Procedure"],
+        "clinical_guideline": "ECCO Guidelines 2023; ACG 2021 Biologic Therapy Guidance",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "BCBS", "Cigna"]
+      }
+    ]
+  },
+  "tofacitinib_xeljanz": {
+    "drug_name": "Tofacitinib (Xeljanz)",
+    "brand_names": ["xeljanz", "tofacitinib"],
+    "drug_class": "JAK1/3 inhibitor (oral targeted therapy)",
+    "indications": [
+      {
+        "name": "Moderate-to-severe ulcerative colitis",
+        "icd10_codes": ["K51.00", "K51.20", "K51.30", "K51.40", "K51.50", "K51.80", "K51.90"],
+        "required_criteria": [
+          "Confirmed diagnosis of moderate-to-severe ulcerative colitis by endoscopy",
+          "Mayo endoscopic score >= 2 documented",
+          "Failure, intolerance, or contraindication to at least one TNF-alpha inhibitor (infliximab or adalimumab)",
+          "Adequate response to conventional therapies assessed (mesalamine, corticosteroids, azathioprine)",
+          "Negative TB test and hepatitis B screening",
+          "No current active, serious, or chronic infection",
+          "Absolute lymphocyte count >= 750 cells/mm3",
+          "Hemoglobin >= 8 g/dL",
+          "Not recommended in patients > 65 years, current or past smokers, or those with cardiovascular risk factors without clear benefit/risk discussion documented",
+          "Prescriber is gastroenterologist"
+        ],
+        "step_therapy_required": ["mesalamine", "prednisone", "azathioprine", "infliximab", "adalimumab"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation", "DiagnosticReport"],
+        "clinical_guideline": "ACG 2022 UC Guidelines; ECCO UC Consensus 2022; FDA REMS requirement for JAK inhibitors",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "Cigna", "BCBS"]
+      }
+    ]
+  },
+  "suvorexant_belsomra": {
+    "drug_name": "Suvorexant (Belsomra)",
+    "brand_names": ["belsomra", "suvorexant"],
+    "drug_class": "Orexin receptor antagonist",
+    "indications": [
+      {
+        "name": "Chronic insomnia disorder",
+        "icd10_codes": ["G47.00", "G47.01", "G47.09", "F51.01"],
+        "required_criteria": [
+          "Diagnosis of chronic insomnia disorder (difficulty initiating or maintaining sleep >= 3 nights/week for >= 3 months)",
+          "Documented failure of cognitive behavioral therapy for insomnia (CBT-I) or documented barrier to access with clinical justification",
+          "Failure or inadequate response to at least two first-line pharmacologic agents: zolpidem, eszopiclone, or zaleplon",
+          "No concurrent use of other CNS depressants without documented clinical justification",
+          "Sleep study (polysomnography) completed to rule out obstructive sleep apnea if clinically indicated",
+          "No narcolepsy diagnosis",
+          "Prescriber is sleep medicine specialist, psychiatrist, or primary care physician with documented sleep medicine training"
+        ],
+        "step_therapy_required": ["zolpidem", "eszopiclone", "zaleplon", "trazodone"],
+        "supporting_fhir_resources": ["Condition", "MedicationStatement", "Observation", "DiagnosticReport"],
+        "clinical_guideline": "AASM Clinical Practice Guideline for Insomnia 2023; ACP Insomnia Management Guidelines 2021",
+        "typical_payers": ["UnitedHealthcare", "Cigna", "BCBS", "Humana"]
+      }
+    ]
+  },
+  "dapagliflozin_farxiga": {
+    "drug_name": "Dapagliflozin (Farxiga)",
+    "brand_names": ["farxiga", "dapagliflozin", "forxiga"],
+    "drug_class": "SGLT2 inhibitor",
+    "indications": [
+      {
+        "name": "Chronic kidney disease to reduce eGFR decline and cardiovascular events",
+        "icd10_codes": ["N18.3", "N18.4", "N18.30", "N18.31", "N18.32"],
+        "required_criteria": [
+          "Confirmed diagnosis of chronic kidney disease (CKD) stage 3a or higher",
+          "eGFR 25–75 mL/min/1.73m2 documented within last 3 months",
+          "UACR >= 200 mg/g documented (or Type 2 diabetes diagnosis)",
+          "Absence of type 1 diabetes",
+          "No current dialysis or kidney transplant",
+          "eGFR >= 25 mL/min/1.73m2 at time of initiation",
+          "Prescriber is nephrologist, endocrinologist, or primary care physician with CKD management experience"
+        ],
+        "step_therapy_required": ["lisinopril", "losartan", "irbesartan"],
+        "supporting_fhir_resources": ["Condition", "Observation", "MedicationStatement"],
+        "clinical_guideline": "KDIGO 2022 CKD Guidelines; ADA 2024 Standards of Care; ACC/AHA SGLT2i recommendations",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "BCBS", "Medicare Part D", "Humana"]
+      }
+    ]
+  },
+  "natalizumab_tysabri": {
+    "drug_name": "Natalizumab (Tysabri)",
+    "brand_names": ["tysabri", "natalizumab"],
+    "drug_class": "Alpha-4 integrin antagonist (biologic)",
+    "indications": [
+      {
+        "name": "Relapsing-remitting multiple sclerosis (RRMS)",
+        "icd10_codes": ["G35", "G35.0"],
+        "required_criteria": [
+          "Confirmed diagnosis of relapsing-remitting multiple sclerosis per McDonald Criteria 2017, confirmed by neurologist",
+          "MRI evidence of active disease (T1 gadolinium-enhancing lesions OR new/enlarging T2 lesions) within last 12 months",
+          "Failure or inadequate response to at least one first-line disease-modifying therapy (interferon beta-1a, interferon beta-1b, glatiramer acetate, dimethyl fumarate) for minimum 6 months, OR highly active disease warranting escalation therapy",
+          "JC virus antibody index documented prior to initiation (required for PML risk stratification)",
+          "Enrolled in TOUCH Prescribing Program (FDA REMS requirement — documented enrollment required)",
+          "No concurrent use of other immunosuppressive therapies",
+          "Baseline MRI within 3 months prior to first infusion",
+          "Prescriber is board-certified neurologist enrolled in TOUCH program"
+        ],
+        "step_therapy_required": ["interferon beta-1a", "interferon beta-1b", "glatiramer acetate", "dimethyl fumarate"],
+        "supporting_fhir_resources": ["Condition", "Observation", "DiagnosticReport", "MedicationStatement", "Practitioner"],
+        "clinical_guideline": "AAN Practice Guidelines for MS 2022; ECTRIMS/EAN MS Treatment Guidelines 2021",
+        "typical_payers": ["UnitedHealthcare", "Aetna", "BCBS", "Cigna", "Medicare Advantage"]
+      }
+    ]
+  }
+}
