@@ -272,12 +272,14 @@ async def draft_appeal_letter(
 # ─── Server Entry Point ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8000))
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))
     host = os.environ.get("HOST", "0.0.0.0")
 
     logger.info(f"Starting AuthBridge MCP Server")
-    logger.info(f"Transport: sse | Host: {host} | Port: {port}")
+    logger.info(f"Host: {host} | Port: {port}")
     logger.info(f"Tools: fetch_patient_context, lookup_pa_criteria, score_clinical_match, "
                 f"draft_pa_letter, draft_appeal_letter")
 
-    mcp.run(transport="sse", host=host, port=port)
+    app = mcp.get_asgi_app()
+    uvicorn.run(app, host=host, port=port)
