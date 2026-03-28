@@ -59,7 +59,7 @@ Give me a patient ID and the drug requiring PA — I'll read their complete FHIR
 
 If a PA is denied, I draft a formal appeal letter with clinical guideline citations and demand for peer-to-peer review.
 
-Powered by FHIR R4 + MCP + Groq LLaMA 3.3 70B. Designed for any FHIR-compliant health system.
+Powered by FHIR R4 + MCP + GPT-4o-mini (GitHub Models). Designed for any FHIR-compliant health system.
 ```
 
 ### System Prompt (paste exactly)
@@ -188,7 +188,7 @@ The PA for Humira was denied for patient [ID]. Denial reason: "Insufficient step
 **MCP server connection fails:**
 - Check Render deploy logs
 - Wait 30-60 seconds if Render cold-starts the free tier
-- Verify GROQ_API_KEY is set in Render environment variables
+- Verify GITHUB_TOKEN is set in Render environment variables
 
 **Tools return empty FHIR data:**
 - HAPI FHIR sandbox patient IDs are numeric (try: 592506, 45767, 21161)

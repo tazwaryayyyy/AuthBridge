@@ -14,6 +14,7 @@ from openai import OpenAI
 logger = logging.getLogger(__name__)
 
 _client = None
+_criteria_db = None
 
 
 def _get_client():

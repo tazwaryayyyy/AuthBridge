@@ -87,11 +87,11 @@ Drafts complete PA justification letter  ←── < 30 seconds total
             │  ⑤ draft_appeal_letter           │
             └──────┬───────────────┬───────────┘
                    │               │
-       ┌───────────▼──┐    ┌───────▼──────────┐
-       │  HAPI FHIR   │    │   Groq API        │
-       │  R4 Sandbox  │    │   LLaMA 3.3 70B   │
-       │  (synthetic) │    │   (free tier)     │
-       └──────────────┘    └──────────────────┘
+        ┌───────────▼──┐    ┌───────▼──────────┐
+        │  HAPI FHIR   │    │  GitHub Models   │
+        │  R4 Sandbox  │    │  GPT-4o-mini     │
+        │  (synthetic) │    │  (OpenAI SDK)    │
+        └──────────────┘    └──────────────────┘
 ```
 
 ### SHARP Framework Compliance
@@ -165,7 +165,7 @@ Generates a formal appeal letter contesting a PA denial.
 
 ### Prerequisites
 - Python 3.11+
-- Free Groq API key ([console.groq.com](https://console.groq.com))
+- GitHub Token ([github.com/settings/tokens](https://github.com/settings/tokens))
 - Git
 
 ### Local Setup
@@ -180,7 +180,7 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
+# Edit .env and add your GITHUB_TOKEN
 
 # Run the demo workflow
 python tests/test_demo.py --scenario humira --show-appeal
@@ -211,7 +211,7 @@ AuthBridge is ready to deploy on Render's free tier.
 2. Go to [render.com](https://render.com) → New → Web Service
 3. Connect your forked repository
 4. Render auto-detects `render.yaml`
-5. Add environment variable: `GROQ_API_KEY`
+5. Add environment variable: `GITHUB_TOKEN`
 6. Deploy
 
 Your MCP server URL: `https://authbridge-mcp.onrender.com/sse`
@@ -222,7 +222,7 @@ Your MCP server URL: `https://authbridge-mcp.onrender.com/sse`
 |-------|-------|
 | Build Command | `pip install -r requirements.txt` |
 | Start Command | `python main.py` |
-| Environment | `GROQ_API_KEY=your_key_here` |
+| Environment | `GITHUB_TOKEN=your_token_here` |
 | Plan | Free |
 
 ---
@@ -284,7 +284,7 @@ A rule-based system can check whether a diagnosis code exists. It cannot read a 
 - Every component uses existing FHIR R4 resources (no new data contracts)
 - HAPI FHIR sandbox available free for development (no PHI risk)
 - Prompt Opinion handles A2A orchestration natively (no custom protocol code)
-- Groq free tier handles all LLM calls (no billing required)
+- OpenAI API via GitHub Models handles all LLM calls (no billing required)
 - Deployable today on any FHIR-compliant EHR: Epic, Cerner, or custom
 
 ---
@@ -326,7 +326,7 @@ authbridge-mcp/
 | Component | Technology |
 |-----------|-----------|
 | MCP Server | Python + FastMCP |
-| LLM | Groq API — LLaMA 3.3 70B Versatile |
+| LLM | OpenAI (GitHub Models) — GPT-4o-mini |
 | FHIR Integration | HAPI FHIR R4 (httpx) |
 | Deployment | Render (free tier) |
 | Platform | Prompt Opinion (MCP + A2A) |

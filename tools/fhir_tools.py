@@ -14,19 +14,21 @@ HAPI_FHIR_BASE = "https://hapi.fhir.org/baseR4"
 FHIR_TIMEOUT = 20.0
 
 
-def _safe_get_coding(resource: dict, field: str, subfield: str = "display") -> str:
+def _safe_get_coding(resource: dict, field: Optional[str] = None, subfield: str = "display") -> str:
     """Safely extract the first coding value from a FHIR CodeableConcept."""
     try:
-        codings = resource.get(field, {}).get("coding", [{}])
+        data = resource.get(field, {}) if field else resource
+        codings = data.get("coding", [{}])
         return codings[0].get(subfield, "") if codings else ""
     except (IndexError, AttributeError):
         return ""
 
 
-def _safe_get_text(resource: dict, field: str) -> str:
+def _safe_get_text(resource: dict, field: Optional[str] = None) -> str:
     """Safely extract .text from a CodeableConcept."""
     try:
-        return resource.get(field, {}).get("text", "") or _safe_get_coding(resource, field)
+        data = resource.get(field, {}) if field else resource
+        return data.get("text", "") or _safe_get_coding(resource, field)
     except AttributeError:
         return ""
 
@@ -129,7 +131,7 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                     "intent": e["resource"].get("intent", ""),
                     "authored_on": e["resource"].get("authoredOn", ""),
                     "dosage": e["resource"].get("dosageInstruction", [{}])[0].get("text", "") if e["resource"].get("dosageInstruction") else "",
-                    "reason": _safe_get_text(e["resource"].get("reasonCode", [{}])[0] if e["resource"].get("reasonCode") else {}, "")
+                    "reason": _safe_get_text(e["resource"].get("reasonCode", [{}])[0] if e["resource"].get("reasonCode") else {})
                 }
                 for e in entries if "resource" in e
             ]
@@ -198,7 +200,7 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                     "cpt_code": _safe_get_coding(e["resource"], "code", "code"),
                     "status": e["resource"].get("status", ""),
                     "date": e["resource"].get("performedDateTime", e["resource"].get("performedPeriod", {}).get("start", "Unknown")),
-                    "outcome": e["resource"].get("outcome", {}).get("text", "") or _safe_get_text(e["resource"].get("outcome", {}), "")
+                    "outcome": e["resource"].get("outcome", {}).get("text", "") or _safe_get_text(e["resource"].get("outcome", {}))
                 }
                 for e in entries if "resource" in e
             ]
