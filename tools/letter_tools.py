@@ -10,20 +10,20 @@ import re
 import logging
 from datetime import date
 from typing import Optional
-from groq import Groq
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-_client: Optional[Groq] = None
+_client = None
 
 
-def _get_groq_client() -> Groq:
+def _get_client():
     global _client
     if _client is None:
-        api_key = os.environ.get("GROQ_API_KEY")
-        if not api_key:
-            raise ValueError("GROQ_API_KEY environment variable not set")
-        _client = Groq(api_key=api_key)
+        _client = OpenAI(
+            base_url="https://models.inference.ai.azure.com",
+            api_key=os.environ.get("GITHUB_TOKEN")
+        )
     return _client
 
 
@@ -59,7 +59,7 @@ async def draft_pa_letter(
         dict with: letter (full text), metadata, missing_criteria,
         recommendation, urgency_flags
     """
-    client = _get_groq_client()
+    client = _get_client()
     today = date.today().strftime("%B %d, %Y")
 
     patient_info = patient_context.get("patient_info", {})
@@ -149,8 +149,8 @@ FORMAT RULES:
 - Do not invent clinical data not provided above"""
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        response = _get_client().chat.completions.create(
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
             max_tokens=1400
@@ -215,7 +215,7 @@ async def draft_appeal_letter(
     Returns:
         dict with: appeal_letter (full text), metadata, key_arguments
     """
-    client = _get_groq_client()
+    client = _get_client()
     today = date.today().strftime("%B %d, %Y")
 
     patient_info = patient_context.get("patient_info", {})
@@ -290,8 +290,8 @@ FORMAT:
 - Length: 500-650 words"""
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        response = _get_client().chat.completions.create(
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
             max_tokens=1600
@@ -303,8 +303,8 @@ FORMAT:
         key_args_prompt = f"""Given this PA appeal letter for {drug_name} denied for: "{denial_reason}",
 list the 3 strongest clinical arguments made. Return as a JSON array of strings. No other text."""
 
-        args_response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        args_response = _get_client().chat.completions.create(
+            model="gpt-4o-mini",
             messages=[
                 {"role": "user", "content": key_args_prompt},
                 {"role": "assistant", "content": appeal_text},

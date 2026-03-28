@@ -9,21 +9,20 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional
-from groq import Groq
+from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-_client: Optional[Groq] = None
-_criteria_db: Optional[dict] = None
+_client = None
 
 
-def _get_groq_client() -> Groq:
+def _get_client():
     global _client
     if _client is None:
-        api_key = os.environ.get("GROQ_API_KEY")
-        if not api_key:
-            raise ValueError("GROQ_API_KEY environment variable not set")
-        _client = Groq(api_key=api_key)
+        _client = OpenAI(
+            base_url="https://models.inference.ai.azure.com",
+            api_key=os.environ.get("GITHUB_TOKEN")
+        )
     return _client
 
 
@@ -109,7 +108,7 @@ async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None) -
 
     # Fallback: LLM-generated synthetic criteria
     logger.info(f"Drug '{drug_name}' not in database — generating synthetic criteria via LLM")
-    client = _get_groq_client()
+    client = _get_client()
 
     prompt = f"""You are a clinical pharmacist and prior authorization specialist.
 The drug '{drug_name}' was not found in the database.
@@ -130,8 +129,8 @@ Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
 }}"""
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        response = _get_client().chat.completions.create(
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.15,
             max_tokens=800
@@ -172,7 +171,6 @@ async def score_clinical_match(patient_context: dict, pa_criteria: dict) -> dict
         dict with: score (0-100), recommendation, matched_criteria, missing_criteria,
         step_therapy_evidence, missing_step_therapy, flags, clinical_summary
     """
-    client = _get_groq_client()
 
     # Build a clean, concise representation of patient data for the prompt
     conditions_str = json.dumps([
@@ -275,8 +273,8 @@ Return ONLY valid JSON with this exact structure:
 }}"""
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        response = _get_client().chat.completions.create(
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=1500

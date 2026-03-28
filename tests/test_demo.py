@@ -356,7 +356,7 @@ async def run_pa_workflow(scenario: str = "humira", show_appeal: bool = False):
     # ── STEP 3: Clinical Match Scoring ────────────────────────────────────────
     print_header("STEP 3 OF 4 — Clinical Evidence Scoring", "─")
     print(f"\n  Analyzing patient record against PA criteria...")
-    print(f"  [Calling Groq LLaMA 3.3 70B for clinical reasoning...]")
+    print(f"  [Calling OpenAI GPT-4o-mini for clinical reasoning...]")
 
     match_result = await score_clinical_match(patient_context, pa_criteria)
 
@@ -502,15 +502,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # Check for GROQ_API_KEY
+    # Check for GITHUB_TOKEN
     import os
     from dotenv import load_dotenv
     load_dotenv()
 
-    if not os.environ.get("GROQ_API_KEY"):
-        print("\n⚠️  ERROR: GROQ_API_KEY not set.")
-        print("   Copy .env.example to .env and add your Groq API key.")
-        print("   Get a free key at: https://console.groq.com\n")
+    if not os.environ.get("GITHUB_TOKEN"):
+        print("\n⚠️  ERROR: GITHUB_TOKEN not set.")
+        print("   Copy .env.example to .env and add your GitHub Token.")
+        print("   Get a token at: https://github.com/settings/tokens\n")
         sys.exit(1)
 
     asyncio.run(run_pa_workflow(
