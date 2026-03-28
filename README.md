@@ -143,7 +143,12 @@ Looks up payer PA requirements for any drug.
 ### `score_clinical_match(patient_context, pa_criteria)`
 Scores how well a patient's FHIR record matches PA criteria.
 
-**Output:** 0-100 score, APPROVE/LIKELY_APPROVE/NEEDS_MORE_INFO/LIKELY_DENY/DENY recommendation, matched criteria list, missing criteria list with specific documentation suggestions, step therapy evidence, clinical safety flags.
+**Output:** 0-100 score, `APPROVE`/`LIKELY_APPROVE`/`NEEDS_MORE_INFO`/`LIKELY_DENY`/`DENY` recommendation, matched criteria list, missing criteria list with specific documentation suggestions, step therapy evidence, clinical safety flags.
+
+**Sample Output (Adalimumab):**
+- **Score:** 85/100 (LIKELY_APPROVE)
+- **Step Therapy Met:** `prednisone` → `azathioprine` → `methotrexate`
+- **Missing:** `6-mercaptopurine` (documented intolerance required)
 
 ---
 
@@ -192,7 +197,7 @@ python main.py
 ### Run the Demo
 
 ```bash
-# Crohn's disease + Humira PA scenario
+# Crohn's disease + Humira PA scenario (with appeal drafting)
 python tests/test_demo.py --scenario humira --show-appeal
 
 # Diabetes + Ozempic PA scenario
@@ -215,6 +220,8 @@ AuthBridge is ready to deploy on Render's free tier.
 6. Deploy
 
 Your MCP server URL: `https://authbridge-mcp.onrender.com/sse`
+> [!TIP]
+> The server exposes a `/health` endpoint for uptime monitoring and Render health checks.
 
 ### Manual Render Setup
 
