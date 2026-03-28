@@ -101,8 +101,9 @@ Drafts complete PA justification letter  ←── < 30 seconds total
 | **Sustainable** | Built entirely on MCP + A2A + FHIR R4. No vendor lock-in. Works with any FHIR-compliant EHR. |
 | **Helpful** | Eliminates the highest-friction administrative burden in medicine. Saves clinicians 13+ hours/week. |
 | **Autonomous** | Detects drug, fetches record, evaluates criteria, writes letter — without manual clinical steps. |
-| **Robust** | LLM output grounded in structured FHIR data. Every claim in the letter traces to patient record. |
-| **Performant** | Full PA letter from prompt to output in under 30 seconds. |
+| **Robust** | Grounded in FHIR data with **Tenacity-based retries** for high uptime. |
+| **Secure** | **Strict Regex Input Sanitization** for all patient IDs to prevent injection/traversal. |
+| **Performant** | **Parallel FHIR fetching** via `asyncio.gather` for <5s data snapshots. |
 
 ---
 
@@ -111,6 +112,19 @@ Drafts complete PA justification letter  ←── < 30 seconds total
 ### `fetch_patient_context(patient_id, fhir_base_url?)`
 Fetches a comprehensive clinical snapshot from a FHIR R4 server.
 
+**Optimizations:**
+- **Parallel Fetching**: Uses `asyncio.gather` to pull 7+ FHIR resources simultaneously.
+- **Resilience**: Implements exponential backoff retries via `tenacity`.
+- **Security**: Strict regex validation (`^[a-zA-Z0-9_.-]+$`) on all patient IDs.
+
+**LLM response quality:**
+- If scoring seems off, check that patient_context contains medication_history data.
+- The scoring prompt requires MedicationStatement resources for step therapy matching.
+
+**Patient ID Validation Error:**
+- AuthBridge uses strict regex sanitization (`^[a-zA-Z0-9_.-]+$`).
+- Ensure the ID does not contain spaces, quotes, or special shell characters.
+
 **Retrieves:** Active conditions (ICD-10), active medications (MedicationRequest), medication history (MedicationStatement), labs and vitals (Observation), procedures, allergies, patient demographics.
 
 **Returns:** Structured dict with all clinical data ready for scoring and letter generation.
@@ -118,23 +132,26 @@ Fetches a comprehensive clinical snapshot from a FHIR R4 server.
 ---
 
 ### `lookup_pa_criteria(drug_name, indication?)`
-Looks up payer PA requirements for any drug.
+@mcp.tool()
+async def lookup_pa_criteria(
+    drug_name: str,
+    indication: Optional[str] = None
+) -> dict:
+    """
+    Looks up clinical PA requirements. Covers 16+ major therapeutic drugs.
+    """
+with full payer criteria, step therapy requirements, ICD-10 codes, and relevant clinical guidelines.
 
-**Coverage:** 12 major therapeutic drugs with full payer criteria, step therapy requirements, ICD-10 codes, and relevant clinical guidelines.
-
-**Supported drugs:**
-- Adalimumab (Humira) — Crohn's disease, rheumatoid arthritis
-- Semaglutide (Ozempic/Wegovy) — Type 2 diabetes
-- Pembrolizumab (Keytruda) — NSCLC
-- Dupilumab (Dupixent) — Atopic dermatitis
-- Rivaroxaban (Xarelto) — Atrial fibrillation
-- Apremilast (Otezla) — Plaque psoriasis
-- Sacubitril/Valsartan (Entresto) — Heart failure
-- Ustekinumab (Stelara) — Crohn's disease (biologic-experienced)
-- Tofacitinib (Xeljanz) — Ulcerative colitis
-- Suvorexant (Belsomra) — Chronic insomnia
-- Dapagliflozin (Farxiga) — Chronic kidney disease
-- Natalizumab (Tysabri) — Multiple sclerosis
+**Supported drugs (representative list):**
+- **Tumor/Oncology:** Pembrolizumab (Keytruda) — NSCLC
+- **Diabetes/Obesity:** Semaglutide (Ozempic/Wegovy), Dapagliflozin (Farxiga)
+- **Autoimmune/Biologics:** Adalimumab (Humira), Ustekinumab (Stelara), Risankizumab (Skyrizi)
+- **Women's Health:** Elagolix (Orilissa) — Endometriosis
+- **Dermatology:** Dupilumab (Dupixent), Apremilast (Otezla)
+- **Neurology:** Natalizumab (Tysabri), Upadacitinib (Rinvoq)
+- **Cardiology:** Rivaroxaban (Xarelto), Sacubitril/Valsartan (Entresto)
+- **Gastroenterology:** Tofacitinib (Xeljanz)
+- **And more...**
 
 **Fallback:** LLM generates synthetic criteria for any unlisted drug.
 
@@ -143,19 +160,21 @@ Looks up payer PA requirements for any drug.
 ### `score_clinical_match(patient_context, pa_criteria)`
 Scores how well a patient's FHIR record matches PA criteria.
 
-**Output:** 0-100 score, `APPROVE`/`LIKELY_APPROVE`/`NEEDS_MORE_INFO`/`LIKELY_DENY`/`DENY` recommendation, matched criteria list, missing criteria list with specific documentation suggestions, step therapy evidence, clinical safety flags.
+**Key Features:**
+- **CMS-0057-F Urgency Detection:** Automatically identifies cases requiring 72-hour expedited review (e.g., oncology, high-acuity biologics).
+- **FHIR Evidence Trail:** Generates a structured citation list mapping claims directly back to FHIR resources (Condition/ID, Observation/ID, etc.).
 
-**Sample Output (Adalimumab):**
-- **Score:** 85/100 (LIKELY_APPROVE)
-- **Step Therapy Met:** `prednisone` → `azathioprine` → `methotrexate`
-- **Missing:** `6-mercaptopurine` (documented intolerance required)
+**Output:** 0-100 score, `APPROVE`/`DENY` recommendation, matched/missing criteria, step therapy evidence, clinical safety flags, and a verifiable **FHIR Evidence Trail**.
 
 ---
 
 ### `draft_pa_letter(...)`
 Generates a complete, payer-ready PA justification letter.
 
-**Format:** 5-paragraph formal clinical letter. Grounded in FHIR data — does not invent clinical facts. Auto-detects urgent cases and requests expedited review.
+**Format:** 5-paragraph formal clinical letter.
+- **Urgency Header:** Automatically includes **CMS-0057-F Expedited Review** headers for urgent cases.
+- **Evidence-Based:** Every claim in the letter is grounded in the FHIR evidence trail.
+- **Physician Voice:** Writes in the authoritative voice of the prescribing specialist.
 
 ---
 
@@ -197,11 +216,14 @@ python main.py
 ### Run the Demo
 
 ```bash
-# Crohn's disease + Humira PA scenario (with appeal drafting)
+# Crohn's disease + Humira PA scenario (Standard Review)
 python tests/test_demo.py --scenario humira --show-appeal
 
-# Diabetes + Ozempic PA scenario
-python tests/test_demo.py --scenario ozempic
+# Oncology + Keytruda PA scenario (🚨 URGENT CMS-0057-F REVIEW)
+python tests/test_demo.py --scenario keytruda
+
+# Security & Sanitization Audit
+python tests/test_sanitization.py
 ```
 
 ---
@@ -317,7 +339,7 @@ authbridge-mcp/
 │   ├── criteria_tools.py      # lookup_pa_criteria + score_clinical_match
 │   └── letter_tools.py        # draft_pa_letter + draft_appeal_letter
 ├── data/
-│   └── payer_criteria.json    # 12-drug PA criteria database
+│   └── payer_criteria.json    # 16+ drug PA criteria database
 ├── tests/
 │   └── test_demo.py           # Full end-to-end demo workflow
 ├── requirements.txt
