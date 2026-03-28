@@ -281,5 +281,4 @@ if __name__ == "__main__":
     logger.info(f"Tools: fetch_patient_context, lookup_pa_criteria, score_clinical_match, "
                 f"draft_pa_letter, draft_appeal_letter")
 
-    app = mcp.get_asgi_app()
-    uvicorn.run(app, host=host, port=port)
+    mcp.run(transport="sse")
