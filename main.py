@@ -273,12 +273,30 @@ async def draft_appeal_letter(
 
 if __name__ == "__main__":
     import uvicorn
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Route, Mount
+
     port = int(os.environ.get("PORT", 10000))
-    host = os.environ.get("HOST", "0.0.0.0")
 
-    logger.info(f"Starting AuthBridge MCP Server")
-    logger.info(f"Host: {host} | Port: {port}")
-    logger.info(f"Tools: fetch_patient_context, lookup_pa_criteria, score_clinical_match, "
-                f"draft_pa_letter, draft_appeal_letter")
+    logger.info(f"Starting AuthBridge MCP Server on 0.0.0.0:{port}")
 
-    mcp.run(transport="sse")
+    sse = SseServerTransport("/messages/")
+
+    async def handle_sse(request):
+        async with sse.connect_sse(
+            request.scope, request.receive, request._send
+        ) as streams:
+            await mcp._mcp_server.run(
+                streams[0], streams[1],
+                mcp._mcp_server.create_initialization_options()
+            )
+
+    starlette_app = Starlette(
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Mount("/messages/", app=sse.handle_post_message),
+        ]
+    )
+
+    uvicorn.run(starlette_app, host="0.0.0.0", port=port)
