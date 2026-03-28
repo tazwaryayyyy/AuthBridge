@@ -276,7 +276,7 @@ if __name__ == "__main__":
     from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
     from starlette.routing import Route, Mount
-    from starlette.responses import JSONResponse
+    from starlette.responses import JSONResponse, FileResponse
 
     port = int(os.environ.get("PORT", 10000))
 
@@ -286,6 +286,9 @@ if __name__ == "__main__":
 
     async def health(request):
         return JSONResponse({"status": "ok"})
+
+    async def index(request):
+        return FileResponse("index.html")
 
     async def handle_sse(request):
         async with sse.connect_sse(
@@ -298,6 +301,7 @@ if __name__ == "__main__":
 
     starlette_app = Starlette(
         routes=[
+            Route("/", endpoint=index),
             Route("/health", endpoint=health),
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse.handle_post_message),
