@@ -36,7 +36,8 @@ def _safe_get_text(resource: dict, field: Optional[str] = None) -> str:
 async def _fhir_get(client: httpx.AsyncClient, path: str, params: dict) -> list:
     """Make a FHIR GET request and return entries safely."""
     try:
-        response = await client.get(f"/{path}", params=params)
+        # NOTE: Using path without leading slash to correctly join with base_url
+        response = await client.get(path, params=params)
         response.raise_for_status()
         return response.json().get("entry", [])
     except Exception as e:
@@ -77,7 +78,7 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
 
         # Patient demographics
         try:
-            r = await client.get(f"/Patient/{patient_id}")
+            r = await client.get(f"Patient/{patient_id}")
             if r.status_code == 200:
                 pt = r.json()
                 name = pt.get("name", [{}])[0]

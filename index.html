@@ -1,1064 +1,682 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AuthBridge — Prior Authorization Intelligence Agent</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
-
-  :root {
-    --bg: #080c10;
-    --surface: #0d1117;
-    --surface2: #161b22;
-    --border: #21262d;
-    --border2: #30363d;
-    --text: #e6edf3;
-    --muted: #7d8590;
-    --accent: #00d4aa;
-    --accent2: #58a6ff;
-    --warn: #f0883e;
-    --danger: #f85149;
-    --green: #3fb950;
-    --purple: #bc8cff;
-    --glow: rgba(0, 212, 170, 0.15);
-    --glow2: rgba(88, 166, 255, 0.1);
-    --mono: 'Space Mono', monospace;
-    --sans: 'Syne', sans-serif;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 24px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ── HEADER ─────────────────────────────────────────────── */
-  header {
-    padding: 48px 0 32px;
-    border-bottom: 1px solid var(--border);
-    position: relative;
-  }
-
-  .header-inner {
-    display: flex;
-    align-items: flex-start;
-    gap: 24px;
-    justify-content: space-between;
-  }
-
-  .logo-block {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .logo-icon {
-    width: 52px;
-    height: 52px;
-    background: linear-gradient(135deg, var(--accent), #00a884);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    flex-shrink: 0;
-    box-shadow: 0 0 24px var(--glow);
-  }
-
-  .logo-text h1 {
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    color: var(--text);
-  }
-
-  .logo-text p {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 0.5px;
-    margin-top: 2px;
-  }
-
-  .header-badges {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-  }
-
-  .badge {
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 3px 10px;
-    border-radius: 4px;
-    letter-spacing: 0.5px;
-    border: 1px solid;
-  }
-
-  .badge-green { color: var(--green); border-color: rgba(63,185,80,0.3); background: rgba(63,185,80,0.06); }
-  .badge-blue { color: var(--accent2); border-color: rgba(88,166,255,0.3); background: rgba(88,166,255,0.06); }
-  .badge-accent { color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.06); }
-
-  /* ── CRISIS STATS ───────────────────────────────────────── */
-  .crisis-bar {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 32px 0;
-  }
-
-  .crisis-stat {
-    background: var(--surface);
-    padding: 20px 18px;
-    text-align: center;
-    position: relative;
-  }
-
-  .crisis-stat::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-  }
-
-  .crisis-stat:nth-child(1)::after { background: var(--danger); }
-  .crisis-stat:nth-child(2)::after { background: var(--warn); }
-  .crisis-stat:nth-child(3)::after { background: var(--purple); }
-  .crisis-stat:nth-child(4)::after { background: var(--accent2); }
-
-  .crisis-num {
-    font-family: var(--mono);
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-  }
-
-  .crisis-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 6px;
-    line-height: 1.4;
-  }
-
-  /* ── MAIN WORKFLOW ──────────────────────────────────────── */
-  .section-title {
-    font-size: 11px;
-    font-family: var(--mono);
-    color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-  }
-
-  .workflow-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin: 32px 0;
-  }
-
-  /* ── PATIENT PANEL ──────────────────────────────────────── */
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .panel-header {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface2);
-  }
-
-  .panel-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  .panel-badge {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--accent);
-    background: var(--glow);
-    border: 1px solid rgba(0,212,170,0.2);
-    padding: 2px 8px;
-    border-radius: 3px;
-  }
-
-  .panel-body { padding: 18px; }
-
-  .patient-name {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-
-  .patient-meta {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 16px;
-  }
-
-  .drug-request {
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 14px;
-    margin-bottom: 16px;
-  }
-
-  .drug-name-display {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--accent);
-    margin-bottom: 2px;
-  }
-
-  .drug-class {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  .fhir-resources {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 12px;
-  }
-
-  .fhir-chip {
-    font-family: var(--mono);
-    font-size: 10px;
-    padding: 3px 8px;
-    background: rgba(88,166,255,0.08);
-    border: 1px solid rgba(88,166,255,0.2);
-    border-radius: 4px;
-    color: var(--accent2);
-  }
-
-  /* ── TIMELINE ───────────────────────────────────────────── */
-  .timeline {
-    position: relative;
-  }
-
-  .timeline-item {
-    display: flex;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-  }
-
-  .timeline-item:last-child { border-bottom: none; }
-
-  .tl-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-top: 5px;
-    flex-shrink: 0;
-  }
-
-  .tl-dot-red { background: var(--danger); }
-  .tl-dot-warn { background: var(--warn); }
-  .tl-dot-green { background: var(--green); }
-  .tl-dot-muted { background: var(--muted); }
-
-  .tl-content { flex: 1; }
-
-  .tl-drug {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .tl-detail {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 2px;
-    line-height: 1.5;
-  }
-
-  /* ── SCORE PANEL ────────────────────────────────────────── */
-  .score-display {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 20px 18px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    margin: 16px 0;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .score-display::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(to bottom, var(--accent), var(--green));
-  }
-
-  .score-circle {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    border: 3px solid var(--accent);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: var(--glow);
-    flex-shrink: 0;
-    box-shadow: 0 0 20px var(--glow);
-    position: relative;
-  }
-
-  .score-number {
-    font-family: var(--mono);
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .score-label {
-    font-family: var(--mono);
-    font-size: 9px;
-    color: var(--muted);
-  }
-
-  .score-details { flex: 1; }
-
-  .score-rec {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--green);
-    margin-bottom: 4px;
-  }
-
-  .score-sub {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  /* ── CRITERIA LIST ──────────────────────────────────────── */
-  .criteria-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 4px;
-  }
-
-  .criteria-item {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    font-size: 12px;
-    line-height: 1.5;
-  }
-
-  .ci-icon {
-    font-size: 13px;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .ci-text { color: var(--text); }
-  .ci-missing { color: var(--muted); }
-
-  /* ── LETTER PANEL ───────────────────────────────────────── */
-  .letter-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 24px 0;
-  }
-
-  .letter-header {
-    background: var(--surface2);
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .letter-title-block {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .letter-icon {
-    font-size: 16px;
-  }
-
-  .letter-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-
-  .letter-meta {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-  }
-
-  .letter-body {
-    padding: 24px;
-  }
-
-  .letter-text {
-    font-family: var(--mono);
-    font-size: 11px;
-    line-height: 1.8;
-    color: #c9d1d9;
-    white-space: pre-wrap;
-    max-height: 400px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border2) transparent;
-  }
-
-  .letter-text::-webkit-scrollbar { width: 4px; }
-  .letter-text::-webkit-scrollbar-track { background: transparent; }
-  .letter-text::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-  /* ── APPEAL SECTION ─────────────────────────────────────── */
-  .denial-banner {
-    background: rgba(248,81,73,0.08);
-    border: 1px solid rgba(248,81,73,0.25);
-    border-radius: 8px;
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 24px 0;
-  }
-
-  .denial-icon { font-size: 18px; }
-
-  .denial-label {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 3px;
-  }
-
-  .denial-text {
-    font-size: 13px;
-    color: var(--danger);
-    font-weight: 600;
-  }
-
-  /* ── ARCHITECTURE DIAGRAM ───────────────────────────────── */
-  .arch-section {
-    margin: 32px 0;
-  }
-
-  .arch-flow {
-    display: flex;
-    gap: 0;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-
-  .arch-node {
-    background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 12px 16px;
-    text-align: center;
-    min-width: 120px;
-  }
-
-  .arch-node-icon { font-size: 20px; margin-bottom: 4px; }
-  .arch-node-name { font-size: 11px; font-weight: 600; color: var(--text); }
-  .arch-node-sub { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 2px; }
-
-  .arch-arrow {
-    color: var(--accent);
-    font-size: 18px;
-    opacity: 0.6;
-    flex-shrink: 0;
-  }
-
-  /* ── TOOL CARDS ─────────────────────────────────────────── */
-  .tools-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin: 16px 0;
-  }
-
-  .tool-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 16px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-
-  .tool-card::before {
-    content: attr(data-num);
-    position: absolute;
-    top: 12px;
-    right: 14px;
-    font-family: var(--mono);
-    font-size: 32px;
-    font-weight: 700;
-    color: rgba(0,212,170,0.06);
-    line-height: 1;
-  }
-
-  .tool-card:hover { border-color: var(--border2); }
-
-  .tool-name {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--accent);
-    margin-bottom: 6px;
-  }
-
-  .tool-desc {
-    font-size: 12px;
-    color: var(--muted);
-    line-height: 1.5;
-  }
-
-  .tool-returns {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--accent2);
-    margin-top: 8px;
-  }
-
-  /* ── IMPACT SECTION ─────────────────────────────────────── */
-  .impact-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin: 16px 0;
-  }
-
-  .impact-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 18px;
-    text-align: center;
-  }
-
-  .impact-icon { font-size: 24px; margin-bottom: 8px; }
-  .impact-num {
-    font-family: var(--mono);
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 4px;
-  }
-  .impact-label {
-    font-size: 11px;
-    color: var(--muted);
-    line-height: 1.4;
-  }
-
-  /* ── FOOTER ─────────────────────────────────────────────── */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 24px 0;
-    margin-top: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .footer-left {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    line-height: 1.8;
-  }
-
-  .footer-right {
-    display: flex;
-    gap: 8px;
-  }
-
-  /* ── ANIMATIONS ─────────────────────────────────────────── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-  }
-
-  @keyframes scanline {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(100vh); }
-  }
-
-  .fade-up { animation: fadeUp 0.5s ease both; }
-  .fade-up-1 { animation-delay: 0.1s; }
-  .fade-up-2 { animation-delay: 0.2s; }
-  .fade-up-3 { animation-delay: 0.3s; }
-  .fade-up-4 { animation-delay: 0.4s; }
-  .fade-up-5 { animation-delay: 0.5s; }
-
-  .live-dot {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--green);
-    margin-right: 6px;
-    animation: pulse 1.5s infinite;
-  }
-
-  /* ── PROGRESS BAR ───────────────────────────────────────── */
-  .progress-bar {
-    height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-top: 8px;
-  }
-
-  .progress-fill {
-    height: 100%;
-    border-radius: 2px;
-    background: linear-gradient(to right, var(--accent), var(--green));
-    transition: width 1.5s ease;
-  }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .workflow-grid { grid-template-columns: 1fr; }
-    .crisis-bar { grid-template-columns: repeat(2, 1fr); }
-    .tools-grid { grid-template-columns: 1fr; }
-    .impact-grid { grid-template-columns: 1fr; }
-    .header-inner { flex-direction: column; }
-    .header-badges { align-items: flex-start; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuthBridge — Prior Authorization Intelligence</title>
+  <style>
+    /* ------------------------------------------------------------
+       RESET & GLOBAL
+    ------------------------------------------------------------ */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f8fafc;
+      color: #0f172a;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+      line-height: 1.5;
+      scroll-behavior: smooth;
+    }
+
+    /* Inter font (modern, professional) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* Container */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    /* Links & interactive */
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* Typography */
+    h1, h2, h3 {
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #3b7c9c;
+      margin-bottom: 1rem;
+      border-left: 3px solid #3b7c9c;
+      padding-left: 0.75rem;
+    }
+
+    /* Cards */
+    .card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.03);
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s ease;
+    }
+
+    .card-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #edf2f7;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fefefe;
+      border-radius: 1.25rem 1.25rem 0 0;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #1e293b;
+    }
+
+    .card-badge {
+      font-size: 0.7rem;
+      background: #eef2ff;
+      color: #2c6e9e;
+      padding: 0.2rem 0.6rem;
+      border-radius: 2rem;
+      font-weight: 500;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    /* Utility */
+    .flex-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mt-4 {
+      margin-top: 1rem;
+    }
+
+    .mb-4 {
+      margin-bottom: 1rem;
+    }
+
+    .text-muted {
+      color: #5b6e8c;
+      font-size: 0.85rem;
+    }
+
+    /* Header */
+    .header {
+      padding: 2.5rem 0 1.5rem;
+      border-bottom: 1px solid #e2edf2;
+      margin-bottom: 2rem;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      background: #1f4e6e;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.5rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.02);
+    }
+
+    .logo-text h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #0a2a3b;
+    }
+
+    .logo-text p {
+      font-size: 0.75rem;
+      color: #5b6e8c;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 0.25rem 0.7rem;
+      border-radius: 2rem;
+      background: #f1f5f9;
+      color: #2c3e50;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Stats / crisis bar */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin: 2rem 0 2.5rem;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 1rem;
+      border: 1px solid #e9eef3;
+      padding: 1.25rem 1rem;
+      text-align: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #1f4e6e;
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: #5b6e8c;
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+
+    /* Workflow 2-col */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin: 1.5rem 0 2rem;
+    }
+
+    /* Patient meta */
+    .patient-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .drug-request {
+      background: #f9fbfd;
+      border-radius: 1rem;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-left: 4px solid #2d7a6e;
+    }
+
+    .drug-name {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #1f4e6e;
+    }
+
+    .fhir-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      background: #eef2ff;
+      padding: 0.2rem 0.6rem;
+      border-radius: 2rem;
+      color: #2c6e9e;
+    }
+
+    /* Timeline */
+    .timeline-item {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .timeline-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .dot-red { background: #cd5a5a; }
+    .dot-orange { background: #e7a55d; }
+    .dot-green { background: #569f6d; }
+    .dot-gray { background: #94a3b8; }
+
+    .timeline-drug {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .timeline-detail {
+      font-size: 0.75rem;
+      color: #5b6e8c;
+      margin-top: 0.2rem;
+    }
+
+    /* Score panel */
+    .score-container {
+      background: #fafdff;
+      border-radius: 1rem;
+      padding: 1.25rem;
+      border: 1px solid #e2edf2;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .score-circle {
+      background: #eef5f9;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #2d7a6e;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }
+
+    .score-number {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #2d7a6e;
+      line-height: 1;
+    }
+
+    .score-total {
+      font-size: 0.7rem;
+      color: #5b6e8c;
+    }
+
+    .score-text {
+      font-weight: 600;
+      color: #2a5c4a;
+    }
+
+    /* criteria list */
+    .criteria-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      margin-top: 1rem;
+    }
+
+    .criteria-item {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    /* letters */
+    .letter-card {
+      margin: 1.5rem 0;
+    }
+
+    .letter-body {
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #1e293b;
+    }
+
+    .denial-banner {
+      background: #fef6e0;
+      border-left: 4px solid #e7a55d;
+      padding: 1rem 1.25rem;
+      border-radius: 1rem;
+      margin: 1.5rem 0;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    /* Tools grid */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0 2rem;
+    }
+
+    .tool-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: 1.25rem;
+      transition: 0.1s linear;
+    }
+
+    .tool-card:hover {
+      border-color: #cbd5e1;
+      background: #fefefe;
+    }
+
+    .tool-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      font-size: 0.8rem;
+      color: #1f4e6e;
+      margin-bottom: 0.5rem;
+    }
+
+    .tool-desc {
+      font-size: 0.85rem;
+      color: #334155;
+      margin: 0.5rem 0;
+    }
+
+    .tool-returns {
+      font-size: 0.7rem;
+      font-family: monospace;
+      color: #5b6e8c;
+      margin-top: 0.5rem;
+      border-top: 1px dashed #e2e8f0;
+      padding-top: 0.5rem;
+    }
+
+    /* Impact grid */
+    .impact-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .impact-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.25rem;
+      border: 1px solid #e2edf2;
+    }
+
+    .impact-icon {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .impact-title {
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    /* footer */
+    .footer {
+      border-top: 1px solid #e2edf2;
+      margin-top: 3rem;
+      padding: 2rem 0 2rem;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: #5b6e8c;
+    }
+
+    /* responsive */
+    @media (max-width: 780px) {
+      .container { padding: 0 1.25rem; }
+      .two-col { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .impact-grid { grid-template-columns: 1fr; }
+    }
+
+    /* progress */
+    .progress-bar {
+      background: #e2e8f0;
+      border-radius: 10px;
+      height: 6px;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+
+    .progress-fill {
+      background: #2d7a6e;
+      width: 0%;
+      height: 6px;
+      border-radius: 10px;
+      transition: width 1s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    }
+
+    /* subtle animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-up {
+      opacity: 0;
+      transform: translateY(12px);
+      animation: fadeUp 0.5s ease forwards;
+    }
+
+    .delay-100 { animation-delay: 0.05s; }
+    .delay-200 { animation-delay: 0.1s; }
+    .delay-300 { animation-delay: 0.15s; }
+    .delay-400 { animation-delay: 0.2s; }
+    .delay-500 { animation-delay: 0.25s; }
+
+    /* scrollbar */
+    .letter-body::-webkit-scrollbar {
+      width: 4px;
+    }
+    .letter-body::-webkit-scrollbar-track {
+      background: #eef2ff;
+      border-radius: 4px;
+    }
+    .letter-body::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
 </head>
 <body>
 
 <div class="container">
 
-  <!-- HEADER -->
-  <header class="fade-up">
-    <div class="header-inner">
-      <div class="logo-block">
-        <div class="logo-icon">🔐</div>
+  <!-- header -->
+  <div class="header fade-up">
+    <div class="flex-between" style="flex-wrap: wrap; gap: 1rem;">
+      <div class="logo">
+        <div class="logo-icon">⚕️</div>
         <div class="logo-text">
           <h1>AuthBridge</h1>
-          <p>PRIOR AUTHORIZATION LIBERATION AGENT · MCP + A2A + FHIR R4</p>
+          <p>Prior Authorization Intelligence · MCP + A2A · FHIR R4</p>
         </div>
       </div>
-      <div class="header-badges">
-        <span class="badge badge-accent">MCP SERVER ✓</span>
-        <span class="badge badge-blue">A2A AGENT ✓</span>
-        <span class="badge badge-green">FHIR R4 ✓</span>
-        <span class="badge badge-accent">SHARP COMPLIANT ✓</span>
+      <div class="badge-group">
+        <span class="badge">MCP Server ✓</span>
+        <span class="badge">A2A Agent ✓</span>
+        <span class="badge">FHIR R4 ✓</span>
+        <span class="badge">SHARP Compliant</span>
       </div>
-    </div>
-  </header>
-
-  <!-- CRISIS STATS -->
-  <div class="crisis-bar fade-up fade-up-1">
-    <div class="crisis-stat">
-      <div class="crisis-num">$31B</div>
-      <div class="crisis-label">Annual PA administrative burden in US healthcare</div>
-    </div>
-    <div class="crisis-stat">
-      <div class="crisis-num">13h</div>
-      <div class="crisis-label">Physician hours lost to PA paperwork per week</div>
-    </div>
-    <div class="crisis-stat">
-      <div class="crisis-num">1 in 4</div>
-      <div class="crisis-label">Patients who abandon treatment awaiting PA approval</div>
-    </div>
-    <div class="crisis-stat">
-      <div class="crisis-num">40%</div>
-      <div class="crisis-label">Physicians reporting patient harm from PA delays</div>
     </div>
   </div>
 
-  <!-- LIVE DEMO SECTION -->
-  <div class="section-title fade-up fade-up-2"><span class="live-dot"></span>LIVE WORKFLOW DEMO — SYNTHETIC PATIENT</div>
+  <!-- stats / problem -->
+  <div class="stats-grid fade-up delay-100">
+    <div class="stat-card"><div class="stat-number">$31B</div><div class="stat-label">Annual US PA burden</div></div>
+    <div class="stat-card"><div class="stat-number">13h</div><div class="stat-label">Physician PA paperwork / week</div></div>
+    <div class="stat-card"><div class="stat-number">1 in 4</div><div class="stat-label">Patients abandon care</div></div>
+    <div class="stat-card"><div class="stat-number">40%</div><div class="stat-label">Physicians report patient harm</div></div>
+  </div>
 
-  <div class="workflow-grid fade-up fade-up-2">
+  <!-- live demo section label -->
+  <div class="section-label fade-up delay-100">⚡ LIVE CLINICAL WORKFLOW</div>
 
-    <!-- LEFT: PATIENT + DRUG -->
-    <div>
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">FHIR Patient Context</span>
-          <span class="panel-badge">✓ FETCHED</span>
+  <!-- two column patient + scoring -->
+  <div class="two-col fade-up delay-200">
+    <!-- left: patient context -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">FHIR Patient Context</span>
+        <span class="card-badge">✓ SYNTHETIC · R4</span>
+      </div>
+      <div class="card-body">
+        <div class="patient-name">Sarah Thompson</div>
+        <div class="text-muted" style="margin-bottom: 1rem;">DOB: 1978-04-12 · Female · ID: crohns-001</div>
+        <div class="drug-request">
+          <div class="drug-name">Adalimumab (Humira) · TNF-alpha inhibitor</div>
+          <div class="text-muted" style="font-size: 0.7rem; margin-top: 4px;">PA Required · Biologic</div>
+          <div class="fhir-chips">
+            <span class="chip">Condition</span><span class="chip">MedicationRequest</span><span class="chip">MedicationStatement</span>
+            <span class="chip">Observation</span><span class="chip">Procedure</span>
+          </div>
         </div>
-        <div class="panel-body">
-          <div class="patient-name">Sarah Thompson</div>
-          <div class="patient-meta">DOB: 1978-04-12 · Female · ID: synthetic-crohns-001</div>
 
-          <div class="drug-request">
-            <div class="drug-name-display">Adalimumab (Humira)</div>
-            <div class="drug-class">TNF-alpha inhibitor · Biologic · PA Required</div>
-            <div class="fhir-resources">
-              <span class="fhir-chip">Condition</span>
-              <span class="fhir-chip">MedicationRequest</span>
-              <span class="fhir-chip">MedicationStatement</span>
-              <span class="fhir-chip">Observation</span>
-              <span class="fhir-chip">Procedure</span>
-            </div>
-          </div>
-
-          <div class="section-title" style="margin-bottom:10px;">TREATMENT HISTORY</div>
-          <div class="timeline">
-            <div class="timeline-item">
-              <div class="tl-dot tl-dot-red"></div>
-              <div class="tl-content">
-                <div class="tl-drug">Prednisone 40mg</div>
-                <div class="tl-detail">Apr 2019 – Aug 2020 · FAILED<br>Inadequate control · Relapsed × 2 after taper</div>
-              </div>
-            </div>
-            <div class="timeline-item">
-              <div class="tl-dot tl-dot-red"></div>
-              <div class="tl-content">
-                <div class="tl-drug">Azathioprine 150mg</div>
-                <div class="tl-detail">Sep 2020 – Oct 2022 · FAILED<br>HBI 8–10 throughout · Inadequate response</div>
-              </div>
-            </div>
-            <div class="timeline-item">
-              <div class="tl-dot tl-dot-red"></div>
-              <div class="tl-content">
-                <div class="tl-drug">Methotrexate 25mg SC</div>
-                <div class="tl-detail">Oct 2022 – Feb 2023 · STOPPED<br>Hepatotoxicity (ALT 3× ULN at 16 weeks)</div>
-              </div>
-            </div>
-            <div class="timeline-item">
-              <div class="tl-dot tl-dot-warn"></div>
-              <div class="tl-content">
-                <div class="tl-drug">Mesalamine 1.6g TID</div>
-                <div class="tl-detail">Nov 2022 – Present · ACTIVE<br>Inadequate disease control · HBI 11</div>
-              </div>
-            </div>
-            <div class="timeline-item">
-              <div class="tl-dot tl-dot-muted"></div>
-              <div class="tl-content">
-                <div class="tl-drug">TB Test + Hep B Screen</div>
-                <div class="tl-detail">Nov 28, 2025 · NEGATIVE / NEGATIVE<br>Pre-biologic workup complete</div>
-              </div>
-            </div>
-          </div>
+        <div style="font-weight: 500; font-size: 0.8rem; margin-bottom: 0.75rem;">TREATMENT HISTORY</div>
+        <div class="timeline">
+          <div class="timeline-item"><div class="timeline-dot dot-red"></div><div><div class="timeline-drug">Prednisone 40mg</div><div class="timeline-detail">Apr 2019 – Aug 2020 · FAILED · relapse after taper ×2</div></div></div>
+          <div class="timeline-item"><div class="timeline-dot dot-red"></div><div><div class="timeline-drug">Azathioprine 150mg</div><div class="timeline-detail">Sep 2020 – Oct 2022 · FAILED · HBI 8-10, inadequate response</div></div></div>
+          <div class="timeline-item"><div class="timeline-dot dot-red"></div><div><div class="timeline-drug">Methotrexate 25mg SC</div><div class="timeline-detail">Oct 2022 – Feb 2023 · STOPPED · hepatotoxicity (ALT 3× ULN)</div></div></div>
+          <div class="timeline-item"><div class="timeline-dot dot-orange"></div><div><div class="timeline-drug">Mesalamine 1.6g TID</div><div class="timeline-detail">Nov 2022 – present · ongoing active disease (HBI 11)</div></div></div>
+          <div class="timeline-item"><div class="timeline-dot dot-gray"></div><div><div class="timeline-drug">TB + Hep B screen</div><div class="timeline-detail">Nov 28, 2025 · Negative/Negative · pre-biologic clearance</div></div></div>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT: SCORE + CRITERIA -->
-    <div>
-      <div class="panel">
-        <div class="panel-header">
-          <span class="panel-title">PA Criteria Match Analysis</span>
-          <span class="panel-badge">ECCO 2023 · ACG 2021</span>
+    <!-- right: PA criteria match -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">PA Criteria Analysis · ECCO 2023 / ACG 2021</span>
+        <span class="card-badge">Evidence-driven</span>
+      </div>
+      <div class="card-body">
+        <div class="score-container">
+          <div class="score-circle"><div class="score-number">91</div><div class="score-total">/100</div></div>
+          <div><div class="score-text">✅ LIKELY APPROVE · Strong clinical match</div><div class="text-muted" style="font-size: 0.7rem;">5 of 5 criteria met · step therapy documented</div><div class="progress-bar"><div class="progress-fill" id="progressFill" style="width: 0%;"></div></div></div>
         </div>
-        <div class="panel-body">
 
-          <div class="score-display">
-            <div class="score-circle">
-              <div class="score-number">91</div>
-              <div class="score-label">/100</div>
-            </div>
-            <div class="score-details">
-              <div class="score-rec">✅ LIKELY APPROVE</div>
-              <div class="score-sub">Evidence Strength: STRONG<br>5 of 5 criteria met · All step therapy documented</div>
-              <div class="progress-bar" style="width: 180px; margin-top:10px;">
-                <div class="progress-fill" style="width: 91%;"></div>
-              </div>
-            </div>
-          </div>
+        <div style="font-weight: 500; font-size: 0.8rem; margin: 0.5rem 0 0.75rem;">CRITERIA MET</div>
+        <div class="criteria-list">
+          <div class="criteria-item"><span>✅</span><span>Moderate-severe Crohn's confirmed by colonoscopy (2019) & CTE (2025)</span></div>
+          <div class="criteria-item"><span>✅</span><span>Corticosteroid failure (prednisone 40mg, relapsed twice)</span></div>
+          <div class="criteria-item"><span>✅</span><span>Immunomodulator failure (azathioprine 2y, inadequate; MTX hepatotoxicity)</span></div>
+          <div class="criteria-item"><span>✅</span><span>TB screening negative (Nov 2025)</span></div>
+          <div class="criteria-item"><span>✅</span><span>Hepatitis B surface antigen negative</span></div>
+        </div>
 
-          <div class="section-title" style="margin-bottom:10px;">CRITERIA MET</div>
-          <div class="criteria-list">
-            <div class="criteria-item">
-              <span class="ci-icon">✅</span>
-              <span class="ci-text">Moderate-to-severe Crohn's confirmed by colonoscopy (2019) and CT enterography (2025)</span>
-            </div>
-            <div class="criteria-item">
-              <span class="ci-icon">✅</span>
-              <span class="ci-text">Corticosteroid failure — Prednisone 40mg failed ×2 over 16 months</span>
-            </div>
-            <div class="criteria-item">
-              <span class="ci-icon">✅</span>
-              <span class="ci-text">Immunomodulator failure — Azathioprine 150mg, 2 years, inadequate response; Methotrexate hepatotoxicity</span>
-            </div>
-            <div class="criteria-item">
-              <span class="ci-icon">✅</span>
-              <span class="ci-text">TB screening negative — TST Nov 28, 2025</span>
-            </div>
-            <div class="criteria-item">
-              <span class="ci-icon">✅</span>
-              <span class="ci-text">Hepatitis B surface antigen negative — Nov 28, 2025</span>
-            </div>
-          </div>
-
-          <div class="section-title" style="margin: 16px 0 10px;">ADDITIONAL EVIDENCE</div>
-          <div class="criteria-list">
-            <div class="criteria-item">
-              <span class="ci-icon">📊</span>
-              <span class="ci-text">CRP 18.7 mg/L (↑ elevated) · HBI score 11 (moderate-severe) · Fecal calprotectin 842 μg/g (↑↑)</span>
-            </div>
-          </div>
-
+        <div style="margin-top: 1.5rem;"><span class="card-badge" style="background:#eef2ff;">📊 OBJECTIVE BIOMARKERS</span>
+          <div class="text-muted mt-4" style="font-size: 0.8rem;">CRP 18.7 mg/L · HBI 11 · Fecal calprotectin 842 μg/g</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PA LETTER -->
-  <div class="letter-panel fade-up fade-up-3">
-    <div class="letter-header">
-      <div class="letter-title-block">
-        <span class="letter-icon">📄</span>
-        <span class="letter-title">GENERATED PA JUSTIFICATION LETTER — ADALIMUMAB (HUMIRA)</span>
-      </div>
-      <span class="letter-meta">Generated in &lt;30s · 487 words · STRONG evidence</span>
+  <!-- PA justification letter -->
+  <div class="letter-card card fade-up delay-300">
+    <div class="card-header">
+      <div><span class="card-title">📄 PA JUSTIFICATION LETTER · ADALIMUMAB (HUMIRA)</span></div>
+      <span class="card-badge">Generated < 30s · 487 words · grounded in FHIR</span>
     </div>
-    <div class="letter-body">
-      <div class="letter-text">December 26, 2025
-
-Medical Director, Prior Authorization Department
-[Insurance Carrier — Prior Authorization Division]
-
-RE: Prior Authorization Request for Adalimumab (Humira) — Sarah Thompson, DOB: 1978-04-12
-ICD-10: K50.90 — Crohn's Disease of Small Intestine, Moderate-to-Severe
-
-Dear Medical Director,
-
-I am writing on behalf of my patient, Sarah Thompson (DOB: April 12, 1978; Patient ID: synthetic-crohns-001), to formally request prior authorization for adalimumab (Humira) for the treatment of her moderate-to-severe Crohn's disease of the small intestine and colon. Ms. Thompson's disease was confirmed by colonoscopy in March 2019, which demonstrated extensive transmural ulcerations throughout the terminal ileum and ascending colon consistent with active ileocolonic Crohn's disease. A follow-up CT enterography performed in October 2025 confirmed ongoing transmural inflammation with mesenteric stranding, indicating persistent, active disease that has failed to respond to multiple lines of conventional therapy.
-
-Ms. Thompson has undergone an extensive and well-documented trial of conventional therapies prior to this biologic request. She completed two separate courses of corticosteroid therapy with prednisone 40mg, spanning April 2019 through August 2020. In both instances, her disease relapsed within four weeks of each corticosteroid taper, confirming inadequate disease control. She subsequently initiated azathioprine 150mg daily in September 2020 at maximum therapeutic dosing. Despite adherence to therapy for two full years through October 2022, her Harvey-Bradshaw Index remained consistently elevated between 8 and 10, representing a failure of adequate response. Methotrexate 25mg subcutaneously weekly was initiated in October 2022 as an alternative immunomodulator; however, this was discontinued in February 2023 due to the development of drug-induced hepatotoxicity, with alanine aminotransferase elevations reaching three times the upper limit of normal at 16 weeks of therapy. Current maintenance therapy with mesalamine 1.6g three times daily has provided insufficient disease control, with her most recent HBI score of 11 and CRP of 18.7 mg/L confirming ongoing moderate-to-severe active disease.
-
-The clinical necessity for adalimumab at this time is unambiguous. Ms. Thompson has demonstrated documented failure of both corticosteroid therapy and multiple immunomodulators, has completed all required pre-biologic screening (tuberculosis skin test negative November 28, 2025; hepatitis B surface antigen negative November 28, 2025), and presents with objective inflammatory biomarkers — a CRP of 18.7 mg/L and fecal calprotectin of 842 μg/g — confirming active transmural disease requiring escalation of therapy.
-
-This prescription is fully aligned with the European Crohn's and Colitis Organisation (ECCO) Guidelines for Crohn's Disease (2023) and the American College of Gastroenterology Clinical Guideline (2021), both of which recommend TNF-alpha inhibitor therapy for patients with moderate-to-severe Crohn's disease who have failed conventional therapy, including corticosteroids and immunomodulators. Ms. Thompson satisfies all step therapy and safety screening requirements mandated by your plan's formulary criteria.
-
-I respectfully request your timely review and approval of this authorization. I am personally available for a peer-to-peer physician review at your earliest convenience. Please contact my office directly at (555) 867-5309 to schedule this call. Written confirmation of receipt of this authorization request is kindly requested.
-
-Sincerely,
-
-Dr. Elena Petrov, MD
-Gastroenterology
-NPI: 1234567890
-Regional Medical Center — Gastroenterology Division
-Direct: (555) 867-5309 (available for peer-to-peer review)</div>
-    </div>
-  </div>
-
-  <!-- DENIAL + APPEAL -->
-  <div class="denial-banner fade-up fade-up-4">
-    <div class="denial-icon">❌</div>
-    <div>
-      <div class="denial-label">SIMULATED PAYER DENIAL</div>
-      <div class="denial-text">"Insufficient documentation of step therapy failure. Authorization denied per plan formulary step therapy requirements."</div>
-    </div>
-  </div>
-
-  <div class="letter-panel fade-up fade-up-4">
-    <div class="letter-header">
-      <div class="letter-title-block">
-        <span class="letter-icon">⚖️</span>
-        <span class="letter-title">GENERATED FORMAL APPEAL LETTER</span>
-      </div>
-      <span class="letter-meta">Generated in &lt;15s · 541 words · Peer-to-peer demanded</span>
-    </div>
-    <div class="letter-body">
-      <div class="letter-text">December 26, 2025
-
-RE: FORMAL APPEAL — Prior Authorization Denial for Adalimumab (Humira)
-PA Reference Number: PA-2025-0042891
-
-Medical Director, Prior Authorization Department
-[Insurance Carrier — Appeals Division]
-
-This letter constitutes a formal first-level appeal of the prior authorization denial issued for adalimumab (Humira) for the treatment of Sarah Thompson (DOB: April 12, 1978). The stated denial reason — insufficient documentation of step therapy failure — is factually incorrect and is directly contradicted by the comprehensive clinical record I previously submitted. This denial represents a barrier to medically necessary treatment and creates an active patient safety risk that I am obligated to formally contest.
-
-To directly rebut the denial: Ms. Thompson's medical record contains unambiguous documentation of step therapy failure at every required level. She failed two courses of corticosteroid therapy with prednisone 40mg (April 2019 – August 2020), with disease relapse documented within four weeks of each taper attempt. She failed immunomodulator therapy with azathioprine 150mg at maximum therapeutic dose over a continuous two-year period (September 2020 – October 2022), with Harvey-Bradshaw Index remaining 8-10 throughout this period, representing persistent moderate-to-severe disease. A second immunomodulator trial with methotrexate 25mg subcutaneously weekly (October 2022 – February 2023) was discontinued due to drug-induced hepatotoxicity (ALT 3× ULN), representing an absolute contraindication to retreatment. The assertion that step therapy documentation is insufficient is without clinical basis.
-
-Ms. Thompson requires adalimumab specifically because she has exhausted all guideline-recommended conventional therapies and has objective, measurable evidence of ongoing active disease: CRP 18.7 mg/L, Harvey-Bradshaw Index 11, and fecal calprotectin 842 μg/g as of December 2025. Her CT enterography from October 2025 demonstrates ongoing transmural inflammation with mesenteric stranding. There is no alternative conventional therapy remaining that has not either been tried and failed, or is contraindicated by prior adverse events. Continuation of her current mesalamine regimen without escalation constitutes inadequate treatment.
-
-This prescription is consistent with the highest level of clinical evidence and guideline recommendation. The European Crohn's and Colitis Organisation (ECCO) Guidelines for Crohn's Disease (2023) and the American College of Gastroenterology Clinical Guideline (2021) both explicitly recommend TNF-alpha inhibitor therapy — including adalimumab — as standard of care for patients with moderate-to-severe Crohn's disease who have failed conventional therapy. Denial of this request is not supported by the standard of care endorsed by any major gastroenterological society.
-
-The continued denial of authorization directly endangers this patient. Active transmural Crohn's disease with objective inflammatory markers as elevated as Ms. Thompson's carries significant risk of disease progression to stricturing or penetrating complications, bowel obstruction, fistula formation, and the requirement for surgical intervention. Each week of delayed treatment increases this risk. Authorization denial on administrative grounds, in the face of documented medical necessity, constitutes a serious patient safety issue that I am prepared to escalate formally.
-
-I am demanding an urgent peer-to-peer physician review with a board-certified gastroenterologist within 24 hours of receipt of this letter. Please contact me directly at (555) 867-5309. Failure to overturn this denial will result in immediate escalation to the State Insurance Commissioner and filing of a formal grievance on behalf of this patient. I request written confirmation of receipt of this appeal within one business day.
-
-Sincerely,
-
-Dr. Elena Petrov, MD
-Gastroenterology · NPI: 1234567890
-Regional Medical Center — Gastroenterology Division
-Direct: (555) 867-5309</div>
-    </div>
-  </div>
-
-  <!-- MCP TOOLS -->
-  <div class="arch-section fade-up fade-up-5">
-    <div class="section-title">THE 5 MCP TOOLS</div>
-    <div class="tools-grid">
-      <div class="tool-card" data-num="①">
-        <div class="tool-name">fetch_patient_context(patient_id)</div>
-        <div class="tool-desc">Reads comprehensive FHIR R4 clinical record. Fetches conditions, medication history, labs, procedures, allergies — all structured for PA analysis.</div>
-        <div class="tool-returns">→ conditions, medications, labs, procedures, allergies</div>
-      </div>
-      <div class="tool-card" data-num="②">
-        <div class="tool-name">lookup_pa_criteria(drug_name, indication?)</div>
-        <div class="tool-desc">Retrieves payer PA requirements from 12-drug criteria database. Falls back to LLM-generated criteria for any drug not in the database.</div>
-        <div class="tool-returns">→ required_criteria, step_therapy, icd10_codes, guidelines</div>
-      </div>
-      <div class="tool-card" data-num="③">
-        <div class="tool-name">score_clinical_match(patient_context, pa_criteria)</div>
-        <div class="tool-desc">Core intelligence — LLM analyzes FHIR data against each PA criterion. Returns score, matched/missing criteria, step therapy evidence, clinical flags.</div>
-        <div class="tool-returns">→ score/100, recommendation, matched[], missing[], flags[]</div>
-      </div>
-      <div class="tool-card" data-num="④">
-        <div class="tool-name">draft_pa_letter(drug, criteria, match, patient, ...)</div>
-        <div class="tool-desc">Generates complete 5-paragraph PA justification letter. Grounded in FHIR data — never invents clinical facts. Auto-detects urgency for expedited review.</div>
-        <div class="tool-returns">→ letter (full text), score, missing_criteria, is_urgent</div>
-      </div>
-      <div class="tool-card" data-num="⑤">
-        <div class="tool-name">draft_appeal_letter(drug, denial_reason, ...)</div>
-        <div class="tool-desc">Generates firm 6-paragraph formal appeal. Rebuts denial reason point-by-point, cites clinical guidelines, quantifies patient safety risk, demands peer-to-peer.</div>
-        <div class="tool-returns">→ appeal_letter, key_arguments[], peer_to_peer_requested</div>
+    <div class="card-body">
+      <div class="letter-body">
+        December 26, 2025<br/><br/>
+        Medical Director, Prior Authorization Department<br/>
+        RE: Prior Authorization Request for Adalimumab (Humira) — Sarah Thompson, DOB: 1978-04-12<br/>
+        ICD-10: K50.90 — Crohn's Disease, Moderate-to-Severe<br/><br/>
+        Dear Medical Director,<br/><br/>
+        I am writing on behalf of my patient, Sarah Thompson, to request prior authorization for adalimumab (Humira) for moderate-to-severe Crohn's disease. Ms. Thompson's diagnosis was confirmed by colonoscopy in 2019 and CT enterography in 2025, demonstrating active transmural inflammation. She has failed two courses of corticosteroids (prednisone 40mg, relapsed after each taper), failed azathioprine after 2 years of therapy (HBI 8-10), and developed hepatotoxicity on methotrexate requiring discontinuation. Current mesalamine provides inadequate control with HBI 11 and CRP 18.7 mg/L.<br/><br/>
+        Pre-biologic screening (TB and Hep B) is negative. This request meets ECCO 2023 and ACG 2021 guidelines for TNF-alpha inhibitor after conventional therapy failure. I am available for peer-to-peer review at (555) 867-5309. Please approve this urgently needed therapy.<br/><br/>
+        Sincerely,<br/>
+        Dr. Elena Petrov, MD<br/>
+        Gastroenterology
       </div>
     </div>
   </div>
 
-  <!-- IMPACT -->
-  <div class="fade-up fade-up-5">
-    <div class="section-title">WHY AUTHBRIDGE WINS</div>
-    <div class="impact-grid">
-      <div class="impact-card">
-        <div class="impact-icon">🤖</div>
-        <div class="impact-num">The AI Factor</div>
-        <div class="impact-label">Rule-based systems check codes. Only an LLM can read a 3-year clinical narrative, identify step therapy failure buried in progress notes, and write a persuasive clinical argument — criterion by criterion.</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-icon">📈</div>
-        <div class="impact-num">Potential Impact</div>
-        <div class="impact-label">$31B burden. 13h/physician/week saved. 1 in 4 patients no longer abandon treatment. 40% reduction in PA-related patient harm. ROI for 200-physician system: ~$3.2M/year.</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-icon">🏥</div>
-        <div class="impact-num">Feasibility</div>
-        <div class="impact-label">All FHIR R4 standard resources. Free HAPI FHIR sandbox. OpenAI (GitHub Models) free tier. Prompt Opinion handles A2A natively. Deployable on Epic, Cerner, or any FHIR system today.</div>
+  <!-- simulated denial + appeal -->
+  <div class="denial-banner fade-up delay-300">
+    <span style="font-size: 1.25rem;">⚠️</span>
+    <div><div style="font-weight: 600; font-size: 0.7rem; letter-spacing: 0.5px;">SIMULATED PAYER DENIAL</div>
+    <div style="color: #a7582c;">“Insufficient documentation of step therapy failure. Authorization denied per plan formulary step therapy requirements.”</div></div>
+  </div>
+
+  <div class="letter-card card fade-up delay-400">
+    <div class="card-header">
+      <div><span class="card-title">⚖️ FORMAL APPEAL LETTER · PEER‑TO‑PEER DEMANDED</span></div>
+      <span class="card-badge">Generated < 15s · rebuttal with clinical guidelines</span>
+    </div>
+    <div class="card-body">
+      <div class="letter-body">
+        December 26, 2025<br/><br/>
+        RE: FORMAL APPEAL — Prior Authorization Denial for Adalimumab (Humira)<br/>
+        PA Reference Number: PA-2025-0042891<br/><br/>
+        To the Medical Director, Appeals Division:<br/><br/>
+        This is a formal first-level appeal. The stated denial reason — “insufficient documentation of step therapy failure” — is contradicted by the clinical record. Ms. Thompson failed two courses of corticosteroids, failed azathioprine (2 years, inadequate response), and developed methotrexate-induced hepatotoxicity. All step therapy requirements are unequivocally satisfied. The denial creates a patient safety risk: active transmural Crohn's with CRP 18.7 and HBI 11 threatens progression to stricturing disease.<br/><br/>
+        This request aligns with ECCO 2023 and ACG 2021 guidelines, which mandate TNF-alpha inhibitor after failure of conventional therapy. I demand an expedited peer-to-peer review with a board-certified gastroenterologist within 24 hours. Failure to overturn will result in escalation to the State Insurance Commissioner.<br/><br/>
+        Sincerely,<br/>
+        Dr. Elena Petrov, MD<br/>
+        Direct: (555) 867-5309
       </div>
     </div>
   </div>
 
-  <!-- FOOTER -->
-  <footer>
-    <div class="footer-left">
-      AuthBridge · Agents Assemble Healthcare AI Endgame Challenge 2026<br>
-      MCP Server + A2A Agent · FHIR R4 · SHARP Compliant · Prompt Opinion Marketplace<br>
-      Built with: Python + FastMCP · OpenAI (GitHub Models) — GPT-4o-mini · HAPI FHIR · Render
-    </div>
-    <div class="footer-right">
-      <span class="badge badge-accent">MCP</span>
-      <span class="badge badge-blue">A2A</span>
-      <span class="badge badge-green">FHIR R4</span>
-    </div>
-  </footer>
+  <!-- MCP TOOLS SECTION -->
+  <div class="section-label fade-up delay-400" style="margin-top: 2rem;">🔧 THE 5 MCP TOOLS (CLINICAL INTELLIGENCE LAYER)</div>
+  <div class="tools-grid fade-up delay-400">
+    <div class="tool-card"><div class="tool-name">① fetch_patient_context(patient_id)</div><div class="tool-desc">FHIR R4 aggregation: Conditions, Medications, Observations, Labs, Allergies.</div><div class="tool-returns">→ structured clinical summary</div></div>
+    <div class="tool-card"><div class="tool-name">② lookup_pa_criteria(drug, indication?)</div><div class="tool-desc">Retrieves payer PA requirements, step therapy rules, guideline references.</div><div class="tool-returns">→ criteria, icd10 list, required evidence</div></div>
+    <div class="tool-card"><div class="tool-name">③ score_clinical_match(patient, criteria)</div><div class="tool-desc">LLM compares FHIR evidence against each PA criterion → score + matched/missing.</div><div class="tool-returns">→ score/100, recommendation, flags[]</div></div>
+    <div class="tool-card"><div class="tool-name">④ draft_pa_letter(drug, criteria, match)</div><div class="tool-desc">Generates full PA justification grounded in actual patient data, never hallucinates.</div><div class="tool-returns">→ letter, urgency flag</div></div>
+    <div class="tool-card"><div class="tool-name">⑤ draft_appeal_letter(denial_reason)</div><div class="tool-desc">Formal appeal letter: rebuts denial, cites guidelines, demands peer-to-peer.</div><div class="tool-returns">→ appeal text, peer-to-peer request</div></div>
+  </div>
 
+  <!-- why authbridge wins -->
+  <div class="section-label fade-up delay-500">WHY AUTHBRIDGE · AGENTIC PRIOR AUTHORIZATION</div>
+  <div class="impact-grid fade-up delay-500">
+    <div class="impact-card"><div class="impact-icon">🧠</div><div class="impact-title">The AI Factor</div><div class="text-muted">Rule‑based systems can’t read clinical narratives. LLMs identify step‑therapy failure from progress notes and build persuasive, evidence‑anchored letters.</div></div>
+    <div class="impact-card"><div class="impact-icon">📉</div><div class="impact-title">Massive ROI</div><div class="text-muted">$31B annual burden · 13h/week saved per physician. ROI for 200‑physician system: ~$3.2M/year.</div></div>
+    <div class="impact-card"><div class="impact-icon">⚙️</div><div class="impact-title">Deployable Today</div><div class="text-muted">FHIR R4 + HAPI sandbox · OpenAI via GitHub Models · MCP + A2A · works with Epic, Cerner, any FHIR EHR.</div></div>
+  </div>
+
+  <!-- footer -->
+  <div class="footer">
+    <div>AuthBridge · Agents Assemble Healthcare AI Endgame 2026 · MCP + A2A · SHARP Compliant · Prompt Opinion Marketplace</div>
+    <div class="badge-group"><span class="badge">MCP</span><span class="badge">A2A</span><span class="badge">FHIR R4</span></div>
+  </div>
 </div>
 
 <script>
-  // Animate progress bar on load
   window.addEventListener('load', () => {
-    setTimeout(() => {
-      document.querySelector('.progress-fill').style.width = '91%';
-    }, 500);
-  });
-
-  // Intersection Observer for fade-up elements
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.style.opacity = '1';
-        entry.target.style.transform = 'translateY(0)';
-      }
-    });
-  }, { threshold: 0.1 });
-
-  document.querySelectorAll('.fade-up').forEach(el => {
-    observer.observe(el);
+    const progress = document.getElementById('progressFill');
+    if(progress) {
+      setTimeout(() => { progress.style.width = '91%'; }, 200);
+    }
+    // optional intersection observer for fade-up already handled via CSS animation; but just for safety
+    const elements = document.querySelectorAll('.fade-up');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting) entry.target.style.opacity = '1';
+      });
+    }, { threshold: 0.1 });
+    elements.forEach(el => observer.observe(el));
   });
 </script>
 </body>

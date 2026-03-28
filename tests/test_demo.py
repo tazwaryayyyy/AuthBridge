@@ -18,6 +18,10 @@ import json
 import argparse
 import sys
 from datetime import date
+from pathlib import Path
+
+# Add project root to path for tool imports
+sys.path.append(str(Path(__file__).parent.parent))
 
 # ─── Synthetic Patient Data ───────────────────────────────────────────────────
 # These simulate what you'd get from fetch_patient_context on a real FHIR server.

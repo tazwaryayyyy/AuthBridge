@@ -12,3 +12,4 @@ services:
       - key: HOST
         value: 0.0.0.0
     plan: free
+    healthCheckPath: /health

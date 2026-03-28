@@ -130,15 +130,16 @@ Return ONLY valid JSON (no markdown, no explanation) with this exact structure:
 }}"""
 
     try:
-        response = _get_client().chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.15,
             max_tokens=800
         )
         raw = response.choices[0].message.content.strip()
-        raw = re.sub(r'^```json\s*', '', raw)
-        raw = re.sub(r'\s*```$', '', raw)
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            raw = match.group(0)
         generated = json.loads(raw)
         generated["found"] = False
         generated["drug_key"] = drug_name.lower().replace(" ", "_")
@@ -273,16 +274,19 @@ Return ONLY valid JSON with this exact structure:
   ]
 }}"""
 
+    client = _get_client()
     try:
-        response = _get_client().chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=1500
         )
         raw = response.choices[0].message.content.strip()
-        raw = re.sub(r'^```json\s*', '', raw)
-        raw = re.sub(r'\s*```$', '', raw)
+        # Robustly extract JSON from potential markdown blocks
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            raw = match.group(0)
         result = json.loads(raw)
         return result
     except json.JSONDecodeError as e:

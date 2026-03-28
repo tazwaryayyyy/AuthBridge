@@ -149,7 +149,7 @@ FORMAT RULES:
 - Do not invent clinical data not provided above"""
 
     try:
-        response = _get_client().chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
@@ -290,7 +290,7 @@ FORMAT:
 - Length: 500-650 words"""
 
     try:
-        response = _get_client().chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
@@ -303,7 +303,7 @@ FORMAT:
         key_args_prompt = f"""Given this PA appeal letter for {drug_name} denied for: "{denial_reason}",
 list the 3 strongest clinical arguments made. Return as a JSON array of strings. No other text."""
 
-        args_response = _get_client().chat.completions.create(
+        args_response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "user", "content": key_args_prompt},
@@ -316,8 +316,9 @@ list the 3 strongest clinical arguments made. Return as a JSON array of strings.
 
         try:
             raw_args = args_response.choices[0].message.content.strip()
-            raw_args = re.sub(r'^```json\s*', '', raw_args)
-            raw_args = re.sub(r'\s*```$', '', raw_args)
+            match = re.search(r"\[.*\]", raw_args, re.DOTALL)
+            if match:
+                raw_args = match.group(0)
             key_arguments = json.loads(raw_args)
         except Exception:
             key_arguments = ["Clinical necessity documented in patient record", "Guideline-aligned treatment", "Patient safety risk from denial"]
