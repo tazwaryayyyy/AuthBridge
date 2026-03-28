@@ -273,15 +273,18 @@ async def draft_appeal_letter(
 
 if __name__ == "__main__":
     import uvicorn
-    from mcp.server.sse import SseServerTransport
     from starlette.applications import Starlette
     from starlette.routing import Route, Mount
+    from starlette.responses import JSONResponse
 
     port = int(os.environ.get("PORT", 10000))
 
     logger.info(f"Starting AuthBridge MCP Server on 0.0.0.0:{port}")
 
     sse = SseServerTransport("/messages/")
+
+    async def health(request):
+        return JSONResponse({"status": "ok"})
 
     async def handle_sse(request):
         async with sse.connect_sse(
@@ -294,6 +297,7 @@ if __name__ == "__main__":
 
     starlette_app = Starlette(
         routes=[
+            Route("/health", endpoint=health),
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse.handle_post_message),
         ]
