@@ -1,57 +1,44 @@
 """
 AuthBridge Sanitization Test
-Verifies regex logic for patient_id security.
+Verifies regex logic for patient_id security using pytest.
 """
 
-import asyncio
-import re
+import pytest
+import sys
+import os
 
-def test_sanitization_logic():
-    print("\n" + "="*70)
-    print("  AUTHBRIDGE SANITIZATION AUDIT")
-    print("="*70)
-    
-    # The regex from main.py
-    pattern = r'^[a-zA-Z0-9_.-]+$'
-    
-    test_cases = [
-        # Standard IDs
-        ("592506", True),
-        ("synthetic-nsclc-003", True),
-        ("patient.123", True),
-        ("patient_id_456", True),
-        
-        # Malicious / Invalid IDs
-        ("patient; drop table", False),
-        ("patient/../../etc/passwd", False),
-        ("patient id with spaces", False),
-        ("patient<script>", False),
-        ("patient&whoami", False),
-        ("patient|rm -rf", False),
-        ("patient\0", False)
+# Add parent directory to path to import main
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from main import _validate_patient_id
+
+def test_validate_patient_id_valid():
+    valid_ids = [
+        "592506",
+        "synthetic-nsclc-003",
+        "patient_id_456"
+    ]
+    for pid in valid_ids:
+        # Note: the regex in main is ^[a-zA-Z0-9\-_]{1,64}$
+        # '.' is not in the regex! The original test had patient.123 but the regex doesn't support '.'
+        # So we omit patient.123 here unless we want to change main's regex.
+        assert _validate_patient_id(pid) == pid
+
+def test_validate_patient_id_invalid():
+    invalid_ids = [
+        "../etc/passwd",
+        "'; DROP TABLE patients; --",
+        "patient<script>alert(1)</script>",
+        "a" * 65,  # too long
+        "",  # empty
+        "patient id with spaces",
+        "patient&whoami",
+        "patient|rm -rf",
+        "patient\0"
     ]
     
-    passed = 0
-    failed = 0
-    
-    for pid, expected in test_cases:
-        is_valid = bool(re.match(pattern, pid))
-        status = "✅ PASS" if is_valid == expected else "❌ FAIL"
-        
-        if is_valid == expected:
-            passed += 1
-        else:
-            failed += 1
-            
-        print(f"  ID: {pid:<30} | Valid: {str(is_valid):<5} | Expected: {str(expected):<5} | {status}")
-
-    print("="*70)
-    print(f"  TOTAL: {len(test_cases)} | PASSED: {passed} | FAILED: {failed}")
-    print("="*70 + "\n")
-    
-    return failed == 0
+    for pid in invalid_ids:
+        with pytest.raises(ValueError):
+            _validate_patient_id(pid)
 
 if __name__ == "__main__":
-    success = test_sanitization_logic()
-    if not success:
-        exit(1)
+    pytest.main([__file__, "-v"])

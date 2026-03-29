@@ -365,6 +365,38 @@ async def run_pa_workflow(scenario: str = "humira", show_appeal: bool = False):
         print(letter_result.get("letter", ""))
         print()
         print(f"  {'━' * 68}")
+        
+        # STEP 5 — Verify the letter
+        print_header("STEP 5 — Letter Verification (Hallucination Audit)")
+        from tools.letter_tools import verify_pa_letter, generate_patient_summary
+        
+        verify_result = await verify_pa_letter(
+            letter=letter_result.get("letter", ""),
+            patient_context=patient_context,
+            match_result=match_result
+        )
+        print(f"\n  Hallucination risk : {verify_result.get('hallucination_risk')}")
+        print(f"  Verdict            : {verify_result.get('overall_verdict')}")
+        print(f"\n  Verified claims:")
+        for c in verify_result.get("verified_claims", []):
+            print(f"    ✓ {c}")
+        if verify_result.get("unverified_claims"):
+            print(f"\n  Needs clinician attestation:")
+            for c in verify_result.get("unverified_claims", []):
+                print(f"    ⚠ {c}")
+        
+        # STEP 6 — Patient summary
+        print_header("STEP 6 — Patient Summary (Plain Language)")
+        summary_result = await generate_patient_summary(
+            drug_name=pa_criteria.get("drug_name", drug_name),
+            match_result=match_result,
+            patient_context=patient_context,
+            pa_criteria=pa_criteria
+        )
+        print(f"\n  {summary_result.get('summary')}")
+        print(f"\n  Next step : {summary_result.get('next_step')}")
+        print(f"  Timeline  : {summary_result.get('expected_timeline')}")
+
     else:
         print(f"\n  ✗ Letter failed: {letter_result.get('error')}")
 

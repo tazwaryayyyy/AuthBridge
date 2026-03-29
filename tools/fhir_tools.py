@@ -78,6 +78,7 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
         "observations": [],
         "procedures": [],
         "allergies": [],
+        "clinical_notes": [],
         "fetch_errors": []
     }
 
@@ -108,13 +109,13 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             _fhir_get(client, "MedicationStatement", {"patient": patient_id, "_count": 40, "_sort": "-effective"}),
             _fhir_get(client, "Observation", {"patient": patient_id, "_count": 50, "_sort": "-date", "status": "final,amended,corrected"}),
             _fhir_get(client, "Procedure", {"patient": patient_id, "_count": 25, "_sort": "-date"}),
-            _fhir_get(client, "AllergyIntolerance", {"patient": patient_id, "_count": 20, "clinical-status": "active"})
+            _fhir_get(client, "AllergyIntolerance", {"patient": patient_id, "_count": 20, "clinical-status": "active"}),
+            _fhir_get(client, "DocumentReference", {"patient": patient_id, "_count": 10, "_sort": "-date"})
         ]
 
         # Use gather to run all clinical queries in parallel
         clinical_data = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Parse Conditions
         if not isinstance(clinical_data[0], Exception):
             result["conditions"] = [
                 {
@@ -123,7 +124,7 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                     "system": _safe_get_coding(e["resource"], "code", "system"),
                     "clinical_status": _safe_get_coding(e["resource"].get("clinicalStatus", {}), None, "code"),
                     "onset": e["resource"].get("onsetDateTime", e["resource"].get("recordedDate", "Unknown")),
-                    "note": e["resource"].get("note", [{}])[0].get("text", "") if e["resource"].get("note") else ""
+                    "note": next(iter(e["resource"].get("note", [])), {}).get("text", "")
                 }
                 for e in clinical_data[0] if "resource" in e
             ]
@@ -137,8 +138,8 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                     "status": e["resource"].get("status", ""),
                     "intent": e["resource"].get("intent", ""),
                     "authored_on": e["resource"].get("authoredOn", ""),
-                    "dosage": e["resource"].get("dosageInstruction", [{}])[0].get("text", "") if e["resource"].get("dosageInstruction") else "",
-                    "reason": _safe_get_text(e["resource"].get("reasonCode", [{}])[0] if e["resource"].get("reasonCode") else {})
+                    "dosage": next(iter(e["resource"].get("dosageInstruction", [])), {}).get("text", ""),
+                    "reason": _safe_get_text(next(iter(e["resource"].get("reasonCode", [])), {}))
                 }
                 for e in clinical_data[1] if "resource" in e
             ]
@@ -152,8 +153,8 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                     "status": e["resource"].get("status", ""),
                     "effective_start": e["resource"].get("effectivePeriod", {}).get("start", e["resource"].get("effectiveDateTime", "Unknown")),
                     "effective_end": e["resource"].get("effectivePeriod", {}).get("end", ""),
-                    "reason_stopped": e["resource"].get("statusReason", [{}])[0].get("text", "") if e["resource"].get("statusReason") else "",
-                    "note": e["resource"].get("note", [{}])[0].get("text", "") if e["resource"].get("note") else ""
+                    "reason_stopped": next(iter(e["resource"].get("statusReason", [])), {}).get("text", ""),
+                    "note": next(iter(e["resource"].get("note", [])), {}).get("text", "")
                 }
                 for e in clinical_data[2] if "resource" in e
             ]
@@ -170,7 +171,7 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                         or e["resource"].get("valueCodeableConcept", {}).get("text", "")
                     ),
                     "unit": e["resource"].get("valueQuantity", {}).get("unit", ""),
-                    "interpretation": _safe_get_coding(e["resource"].get("interpretation", [{}])[0], None, "code"),
+                    "interpretation": _safe_get_coding(next(iter(e["resource"].get("interpretation", [])), {}), None, "code"),
                     "date": e["resource"].get("effectiveDateTime", ""),
                     "status": e["resource"].get("status", "")
                 }
@@ -198,9 +199,16 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
                     "type": e["resource"].get("type", ""),
                     "category": e["resource"].get("category", []),
                     "criticality": e["resource"].get("criticality", ""),
-                    "reaction": e["resource"].get("reaction", [{}])[0].get("manifestation", [{}])[0].get("text", "") if e["resource"].get("reaction") else ""
+                    "reaction": next(iter(next(iter(e["resource"].get("reaction", [])), {}).get("manifestation", [])), {}).get("text", "")
                 }
                 for e in clinical_data[5] if "resource" in e
+            ]
+
+        # Parse DocumentReference
+        if len(clinical_data) > 6 and not isinstance(clinical_data[6], Exception):
+            result["clinical_notes"] = [
+                next(iter(e["resource"].get("content", [])), {}).get("attachment", {}).get("data", "")
+                for e in clinical_data[6] if "resource" in e
             ]
 
     return result

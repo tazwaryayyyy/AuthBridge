@@ -13,11 +13,21 @@ import asyncio
 from datetime import date
 from typing import Optional, Dict, Any
 from openai import AsyncOpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
 from tools.criteria_tools import build_evidence_citations, format_evidence_trail, get_async_client
 
 logger = logging.getLogger(__name__)
 
 _client: Optional[AsyncOpenAI] = None
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=4))
+async def _llm_call(messages, max_tokens=1500, temperature=0.1):
+    return await get_async_client().chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
 
 
 async def draft_pa_letter(
@@ -99,9 +109,7 @@ Write a 5-paragraph justification letter:
 No markdown in output. 450-550 words."""
 
     try:
-        client = get_async_client()
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             max_tokens=1400
@@ -191,9 +199,7 @@ Write a 6-paragraph firm appeal letter:
 No markdown. 500-650 words."""
 
     try:
-        client = get_async_client()
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
             max_tokens=1600
@@ -213,3 +219,116 @@ No markdown. 500-650 words."""
     except Exception as e:
         logger.error(f"Appeal letter generation failed: {e}")
         return {"success": False, "error": str(e), "drug": drug_name, "patient": patient_name, "denial_reason": denial_reason}
+
+async def verify_pa_letter(
+    letter: str,
+    patient_context: dict,
+    match_result: dict
+) -> dict:
+    """
+    Audits the generated PA letter against the FHIR evidence trail.
+    Flags any claim in the letter that cannot be traced to a source resource.
+    Implements the Verifier/Observer pattern for hallucination prevention.
+    """
+    evidence_trail = match_result.get("fhir_evidence_trail", [])
+    
+    prompt = f"""You are a clinical auditor reviewing an AI-generated PA letter 
+for accuracy and hallucination risk.
+
+FHIR EVIDENCE AVAILABLE:
+{chr(10).join(evidence_trail)}
+
+LETTER TO AUDIT:
+{letter}
+
+For every clinical claim in the letter, determine if it is supported by the FHIR evidence.
+Return ONLY valid JSON:
+{{
+  "verified_claims": ["<claim> — confirmed: <FHIR resource>"],
+  "unverified_claims": ["<claim> — NOT found in FHIR record — requires clinician attestation"],
+  "hallucination_risk": "<LOW|MEDIUM|HIGH>",
+  "overall_verdict": "<VERIFIED|NEEDS_REVIEW|REJECT>",
+  "auditor_notes": "<1-2 sentence summary>"
+}}"""
+
+    response = await _llm_call(
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+        max_tokens=800
+    )
+    raw = response.choices[0].message.content.strip()
+    raw = re.sub(r'^```json\s*', '', raw)
+    raw = re.sub(r'\s*```$', '', raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.error(f"Failed to parse verify_pa_letter JSON: {raw[:100]}")
+        return {
+            "verified_claims": [],
+            "unverified_claims": [],
+            "hallucination_risk": "HIGH",
+            "overall_verdict": "ERROR",
+            "auditor_notes": "LLM output formatting error."
+        }
+
+
+async def generate_patient_summary(
+    drug_name: str,
+    match_result: dict,
+    patient_context: dict,
+    pa_criteria: dict
+) -> dict:
+    """
+    Generates a plain-language PA status summary for the patient.
+    No clinical jargon, no ICD codes. Designed for patient portal delivery.
+    Based on Dr. Proctor's CHIPPER app philosophy at CHOP.
+    """
+    score = match_result.get("score", 0)
+    recommendation = match_result.get("recommendation", "NEEDS_REVIEW")
+    is_urgent = match_result.get("urgency", {}).get("is_urgent", False)
+    patient_name = patient_context.get("patient_info", {}).get("name", "you")
+    
+    prompt = f"""You are a patient liaison writing a simple, warm explanation 
+of a prior authorization request for a patient. No medical jargon. No ICD codes.
+Write like you are talking to a friend.
+
+Drug requested: {drug_name}
+Condition: {pa_criteria.get('indication_matched', 'your condition')}
+PA score: {score}/100
+Recommendation: {recommendation}
+Urgent: {is_urgent}
+Missing documentation: {match_result.get('missing_criteria', [])}
+
+Write a 3-4 sentence patient summary covering:
+1. What was submitted to insurance and why
+2. What the likely outcome is
+3. What the next step is and roughly how long it takes
+4. What they should do if they have questions
+
+Keep it under 80 words. Warm, reassuring, clear. No bullet points.
+Return ONLY valid JSON:
+{{
+  "summary": "<plain language summary>",
+  "next_step": "<one clear action for the patient>",
+  "expected_timeline": "<plain language timeline>",
+  "contact_note": "Contact your doctor's office if you have questions or if you haven't heard back within the expected timeframe."
+}}"""
+
+    response = await _llm_call(
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=400
+    )
+    raw = response.choices[0].message.content.strip()
+    raw = re.sub(r'^```json\s*', '', raw)
+    raw = re.sub(r'\s*```$', '', raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.error(f"Failed to parse patient_summary JSON: {raw[:100]}")
+        return {
+            "summary": "We encountered an error generating your plain language summary. Your clinical notes are being processed.",
+            "next_step": "None",
+            "expected_timeline": "Unknown",
+            "contact_note": "Contact your doctor's office if you have questions."
+        }

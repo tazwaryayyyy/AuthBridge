@@ -13,12 +13,12 @@ import asyncio
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from openai import AsyncOpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
 _client: Optional[AsyncOpenAI] = None
 _criteria_db: Optional[dict] = None
-
 
 def get_async_client() -> AsyncOpenAI:
     global _client
@@ -31,6 +31,15 @@ def get_async_client() -> AsyncOpenAI:
             api_key=token
         )
     return _client
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=4))
+async def _llm_call(messages, max_tokens=1500, temperature=0.1):
+    return await get_async_client().chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
 
 
 def _load_criteria() -> dict:
@@ -234,7 +243,8 @@ async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None) -
             "supporting_fhir_resources": matched_indication.get("supporting_fhir_resources", []),
             "clinical_guideline": matched_indication.get("clinical_guideline", ""),
             "typical_payers": matched_indication.get("typical_payers", []),
-            "source": "authbridge_criteria_database"
+            "source": "authbridge_criteria_database",
+            "criteria_weights": matched_indication.get("criteria_weights", {})
         }
 
     logger.info(f"Drug '{drug_name}' not in database — generating via LLM")
@@ -255,8 +265,7 @@ Return ONLY valid JSON:
 }}"""
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=800
@@ -264,7 +273,12 @@ Return ONLY valid JSON:
         raw = response.choices[0].message.content.strip()
         raw = re.sub(r'^```json\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
-        generated = json.loads(raw)
+        try:
+            generated = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse LLM criteria JSON: {raw[:100]}")
+            return {"found": False, "drug_name": drug_name, "error": "JSON parse error", "required_criteria": [], "source": "error"}
+            
         generated["found"] = False
         generated["drug_key"] = drug_name.lower().replace(" ", "_")
         generated["source"] = "llm_generated_synthetic"
@@ -293,12 +307,21 @@ async def score_clinical_match(patient_context: dict, pa_criteria: dict) -> dict
     obs_str = _json_summary([f"{o['name']}: {o['value']} {o['unit']}" for o in patient_context.get("observations", [])])
     procedures_str = _json_summary([f"{p['name']} — {p.get('outcome', '')}" for p in patient_context.get("procedures", [])])
     allergies_str = _json_summary([f"{a['substance']} ({a['criticality']})" for a in patient_context.get("allergies", [])])
+    notes_str = json.dumps(patient_context.get("clinical_notes", [])[:5], indent=2)
+    
+    criteria_weights_str = json.dumps(pa_criteria.get("criteria_weights", {}), indent=2)
 
     prompt = f"""You are a clinical reviewer. Analyze if the patient meets PA criteria for {drug_name}.
 
 == PA CRITERIA ==
 {json.dumps(pa_criteria.get('required_criteria', []), indent=2)}
 Step therapy: {json.dumps(pa_criteria.get('step_therapy_required', []), indent=2)}
+
+Criteria weights (CRITICAL items failing = automatic DENY, HIGH items failing = LIKELY_DENY):
+{criteria_weights_str}
+
+Apply these weights when calculating the score. A CRITICAL criterion not met 
+caps the score at 40. A HIGH criterion not met reduces score by 15 points each.
 
 == PATIENT FHIR SNAPSHOT ==
 Conditions: {conditions_str}
@@ -307,6 +330,9 @@ History: {med_history_str}
 Observations: {obs_str}
 Procedures: {procedures_str}
 Allergies: {allergies_str}
+
+Clinical notes (unstructured): look for evidence of failed treatments, adverse reactions, or symptom descriptions that support the criteria even if not in discrete fields.
+{notes_str}
 
 Return ONLY valid JSON:
 {{
@@ -323,9 +349,7 @@ Return ONLY valid JSON:
 }}"""
 
     try:
-        client = get_async_client()
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+        response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
             max_tokens=1500
@@ -333,7 +357,19 @@ Return ONLY valid JSON:
         raw = response.choices[0].message.content.strip()
         raw = re.sub(r'^```json\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
-        result = json.loads(raw)
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse LLM scoring JSON: {raw[:100]}")
+            result = {
+                "score": 0, 
+                "recommendation": "ERROR", 
+                "matched_criteria": [],
+                "missing_criteria": [],
+                "step_therapy_evidence": [],
+                "flags": [],
+                "clinical_summary": "LLM Parsing Failure"
+            }
 
         result["urgency"] = urgency
         result["evidence_citations"] = evidence_citations

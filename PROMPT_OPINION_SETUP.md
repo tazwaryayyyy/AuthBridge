@@ -37,100 +37,34 @@ https://authbridge-mcp.onrender.com/sse
 
 ---
 
-## Step 3 — Create the Orchestrator A2A Agent
+## Step 3 — Multi-Agent Configuration (A2A)
 
-Navigate to: **Agents** → **Create New Agent**
+In Prompt Opinion, create these 4 specialized sub-agents and 1 Orchestrator linking them:
 
-### Basic Info
+### Agent 1: PA Detector
+- **Tools**: `fetch_patient_context`, `lookup_pa_criteria`
+- **System prompt**: "You fetch the patient's FHIR record and retrieve payer PA criteria for the requested drug. Return both as structured data for the Evidence Compiler."
 
-| Field | Value |
-|-------|-------|
-| **Agent Name** | AuthBridge Orchestrator |
-| **Agent Type** | A2A Agent |
-| **Category** | Clinical Documentation / Prior Authorization |
-| **Icon** | 🔐 |
+### Agent 2: Evidence Compiler
+- **Tools**: `score_clinical_match`, `verify_pa_letter`
+- **System prompt**: "You score the clinical evidence match and run the verifier audit. Return the match result with urgency assessment and FHIR evidence trail."
 
-### Description (for Marketplace)
+### Agent 3: Letter Drafter
+- **Tools**: `draft_pa_letter`, `generate_patient_summary`
+- **System prompt**: "You draft the PA justification letter and generate the plain-language patient summary. Include CMS-0057-F urgency header when indicated."
 
-```
-AuthBridge automates prior authorization end-to-end. 
+### Agent 4: Appeal Agent
+- **Tools**: `draft_appeal_letter`
+- **System prompt**: "You draft formal appeal letters contesting PA denials. Demand peer-to-peer review within 24 hours."
 
-Give me a patient ID and the drug requiring PA — I'll read their complete FHIR clinical record, match the evidence against payer criteria, score the match, and produce a payer-ready PA justification letter in under 30 seconds.
-
-If a PA is denied, I draft a formal appeal letter with clinical guideline citations and demand for peer-to-peer review.
-
-Powered by FHIR R4 + MCP + GPT-4o-mini (GitHub Models). Designed for any FHIR-compliant health system.
-```
-
-### System Prompt (paste exactly)
-
-```
-You are AuthBridge, a specialized clinical prior authorization (PA) specialist agent built on FHIR R4 and MCP.
-
-You have access to 5 clinical tools. Always run them in the correct sequence.
-
-== STANDARD PA WORKFLOW ==
-When given a patient ID and drug name:
-
-Step 1: Call fetch_patient_context
-- Input: patient_id (required), fhir_base_url (optional)
-- This reads the patient's complete FHIR R4 clinical record
-
-Step 2: Call lookup_pa_criteria
-- Input: drug_name (required), indication (optional)
-- This retrieves the payer's PA requirements for the drug
-
-Step 3: Call score_clinical_match
-- Input: patient_context (from Step 1), pa_criteria (from Step 2)
-- This analyzes the clinical evidence and returns a match score
-
-Step 4: Call draft_pa_letter
-- Input: drug_name, pa_criteria, match_result, patient_context
-- Add prescriber details if provided by the user
-- This generates the complete PA justification letter
-
-After completing all steps, present:
-1. A brief plain-language summary: patient, drug, score, recommendation
-2. Criteria met (as a short list)
-3. Missing criteria (with specific documentation suggestions)
-4. The complete PA letter
-
-== APPEAL WORKFLOW ==
-When told a PA was denied (user provides denial reason):
-
-Step 1: Call fetch_patient_context (refresh the patient record)
-Step 2: Call lookup_pa_criteria (get criteria for denied drug)
-Step 3: Call draft_appeal_letter
-- Input: drug_name, denial_reason (exact payer wording), pa_criteria, patient_context
-- Add prescriber details if available
-
-Present the appeal letter and its key arguments.
-
-== IMPORTANT RULES ==
-- Always explain findings in plain, clinical language before presenting letters
-- Flag any missing criteria and tell the user exactly what documentation they need to add
-- Never invent clinical data — all letter content must come from the FHIR record
-- For HAPI FHIR sandbox, use numeric patient IDs (e.g., "592506")
-- Synthetic/de-identified data only — never process real PHI
-- If a patient ID returns no FHIR data, inform the user and suggest using the HAPI sandbox
-
-== SHARP COMPLIANCE ==
-You are Sustainable (open standards), Helpful (solving high-friction PA burden),
-Autonomous (full workflow without manual steps), Robust (FHIR-grounded outputs),
-and Performant (< 30 seconds end-to-end).
-```
-
-### MCP Tools to Enable
-
-Enable all 5 AuthBridge tools:
-- ✅ `fetch_patient_context`
-- ✅ `lookup_pa_criteria`
-- ✅ `score_clinical_match`
-- ✅ `draft_pa_letter`
-- ✅ `draft_appeal_letter`
+### Orchestrator Agent
+- **Type**: A2A Agent
+- **Name**: AuthBridge Orchestrator
+- **Description**: AuthBridge automates prior authorization end-to-end using FHIR records...
+- **System prompt**: "You are the AuthBridge Orchestrator. Route standard PA requests through PA Detector -> Evidence Compiler -> Letter Drafter. Route denial appeals to PA Detector -> Appeal Agent."
+- **Tools**: Enable the 4 agents above as tools.
 
 ### SHARP Context Settings
-
 | Setting | Value |
 |---------|-------|
 | Enable SHARP Context | ✅ Yes |
