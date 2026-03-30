@@ -11,6 +11,14 @@
 
 ---
 
+## Marketplace Listing
+
+You can discover and invoke the AuthBridge Prior Authorization Agent directly on the Prompt Opinion Marketplace:
+
+👉 **[AuthBridge on Prompt Opinion](https://app.promptopinion.ai/marketplace/agent/019d3f98-f595-7610-80f0-645ebb9b5f9f)**
+
+---
+
 ## The Problem
 
 Prior Authorization (PA) is the most hated administrative process in medicine — and one of the most harmful.
