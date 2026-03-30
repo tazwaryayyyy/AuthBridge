@@ -277,6 +277,9 @@ python tests/test_sanitization.py
 
 # Concurrent Load & Smoke Test (Requires local server running)
 python tests/test_load.py
+
+# Automated Load Test (Recommended: Starts server and tests in one click)
+.\run_load_test.bat
 ```
 
 ---

@@ -52,15 +52,9 @@ def _safe_get_text(resource: Dict[str, Any], field: Optional[str] = None) -> str
 )
 async def _fhir_get(client: httpx.AsyncClient, path: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Make a FHIR GET request and return entries safely with retries."""
-    try:
-        response = await client.get(path, params=params)
-        response.raise_for_status()
-        return response.json().get("entry", [])
-    except Exception as e:
-        # Tenacity will catch the raised error (if any) and retry.
-        # If it finally fails after all attempts, we log and return empty.
-        logger.warning(f"FHIR request finally failed for {path} after retries: {e}")
-        return []
+    response = await client.get(path, params=params)
+    response.raise_for_status()
+    return response.json().get("entry", [])
 
 
 async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = None) -> Dict[str, Any]:
@@ -116,7 +110,9 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
         # Use gather to run all clinical queries in parallel
         clinical_data = await asyncio.gather(*tasks, return_exceptions=True)
 
-        if not isinstance(clinical_data[0], Exception):
+        if isinstance(clinical_data[0], Exception):
+            result["fetch_errors"].append(f"Conditions Error: {str(clinical_data[0])}")
+        else:
             result["conditions"] = [
                 {
                     "code": _safe_get_coding(e["resource"], "code", "code"),
@@ -130,7 +126,9 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             ]
 
         # Parse Medication Requests
-        if not isinstance(clinical_data[1], Exception):
+        if isinstance(clinical_data[1], Exception):
+            result["fetch_errors"].append(f"MedicationRequest Error: {str(clinical_data[1])}")
+        else:
             result["active_medications"] = [
                 {
                     "name": _safe_get_text(e["resource"], "medicationCodeableConcept"),
@@ -145,7 +143,9 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             ]
 
         # Parse Medication History
-        if not isinstance(clinical_data[2], Exception):
+        if isinstance(clinical_data[2], Exception):
+            result["fetch_errors"].append(f"MedicationStatement Error: {str(clinical_data[2])}")
+        else:
             result["medication_history"] = [
                 {
                     "name": _safe_get_text(e["resource"], "medicationCodeableConcept"),
@@ -160,7 +160,9 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             ]
 
         # Parse Observations
-        if not isinstance(clinical_data[3], Exception):
+        if isinstance(clinical_data[3], Exception):
+            result["fetch_errors"].append(f"Observation Error: {str(clinical_data[3])}")
+        else:
             result["observations"] = [
                 {
                     "name": _safe_get_text(e["resource"], "code"),
@@ -179,7 +181,9 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             ]
 
         # Parse Procedures
-        if not isinstance(clinical_data[4], Exception):
+        if isinstance(clinical_data[4], Exception):
+            result["fetch_errors"].append(f"Procedure Error: {str(clinical_data[4])}")
+        else:
             result["procedures"] = [
                 {
                     "name": _safe_get_text(e["resource"], "code"),
@@ -192,7 +196,9 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             ]
 
         # Parse Allergies
-        if not isinstance(clinical_data[5], Exception):
+        if isinstance(clinical_data[5], Exception):
+            result["fetch_errors"].append(f"AllergyIntolerance Error: {str(clinical_data[5])}")
+        else:
             result["allergies"] = [
                 {
                     "substance": _safe_get_text(e["resource"], "code"),
@@ -205,10 +211,13 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
             ]
 
         # Parse DocumentReference
-        if len(clinical_data) > 6 and not isinstance(clinical_data[6], Exception):
-            result["clinical_notes"] = [
-                next(iter(e["resource"].get("content", [])), {}).get("attachment", {}).get("data", "")
-                for e in clinical_data[6] if "resource" in e
-            ]
+        if len(clinical_data) > 6:
+            if isinstance(clinical_data[6], Exception):
+                result["fetch_errors"].append(f"DocumentReference Error: {str(clinical_data[6])}")
+            else:
+                result["clinical_notes"] = [
+                    next(iter(e["resource"].get("content", [])), {}).get("attachment", {}).get("data", "")
+                    for e in clinical_data[6] if "resource" in e
+                ]
 
     return result

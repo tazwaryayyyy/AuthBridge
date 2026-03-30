@@ -29,8 +29,8 @@ _metrics = {
 }
 
 def _validate_patient_id(patient_id: str) -> str:
-    # Allow alphanumeric, hyphens, underscores only
-    if not re.match(r'^[a-zA-Z0-9\-_]{1,64}$', patient_id):
+    # Allow alphanumeric, hyphens, underscores, and periods (standard FHIR ID format)
+    if not re.match(r'^[a-zA-Z0-9\-_.]{1,64}$', patient_id):
         raise ValueError(f"Invalid patient_id format: {patient_id}")
     return patient_id
 
@@ -339,7 +339,7 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
                 mcp._mcp_server.create_initialization_options()
             )
 
-    @limiter.limit("30/minute")
+    @limiter.limit("50/minute")
     async def run_pa_api(request):
         # Request size limit 1MB
         if int(request.headers.get("content-length", 0)) > 1024 * 1024:
