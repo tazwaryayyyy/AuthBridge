@@ -212,6 +212,13 @@ applies the 72-hour header to generated letters.
 | `verify_pa_letter` | AI self-audit for hallucination prevention |
 | `generate_patient_summary` | Plain-language patient portal summary |
 
+### Detailed Documentation
+For deep dives into the protocol and scoring logic, see:
+- [JUDGING.md](file:///c:/Users/MSI/Desktop/AuthBridge/JUDGING.md) — Comprehensive judging criteria mapping
+- [TOOLS.md](file:///c:/Users/MSI/Desktop/AuthBridge/TOOLS.md) — Exact MCP tool input/output schemas
+- [walkthrough.md](file:///c:/Users/MSI/Desktop/AuthBridge/walkthrough.md) — Complete implementation history
+- [audit_report.md](file:///c:/Users/MSI/Desktop/AuthBridge/audit_report.md) — Security & Concurrency audit results
+
 ### Summary — what this adds to each judging criterion
 | Criterion | Addition |
 |---|---|
@@ -389,7 +396,8 @@ AuthBridge is built for synthetic and de-identified data only.
 
 ```
 authbridge-mcp/
-├── main.py                    # MCP server entry point (FastMCP)
+├── main.py                    # MCP server entry point (FastMCP + Starlette)
+├── index.html                 # Interactive SPA Frontend
 ├── tools/
 │   ├── fhir_tools.py          # fetch_patient_context — FHIR R4 integration
 │   ├── criteria_tools.py      # lookup_pa_criteria + score_clinical_match
@@ -397,7 +405,14 @@ authbridge-mcp/
 ├── data/
 │   └── payer_criteria.json    # 16+ drug PA criteria database
 ├── tests/
-│   └── test_demo.py           # Full end-to-end demo workflow
+│   ├── test_demo.py           # Full end-to-end demo workflow
+│   ├── test_load.py           # Load & Concurrency simulation
+│   └── test_sanitization.py   # Security sanitization tests
+├── JUDGING.md                 # 🏆 Judging panel alignment roadmap
+├── TOOLS.md                   # 🛠️ MCP Tool Schema documentation
+├── walkthrough.md             # 📝 Step-by-step implementation guide
+├── audit_report.md            # 🛡️ Security & Concurrency audit
+├── run_load_test.bat          # ⚡ One-click automated load test (Windows)
 ├── requirements.txt
 ├── render.yaml                # One-click Render deployment
 ├── .env.example
