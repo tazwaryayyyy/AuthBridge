@@ -30,6 +30,21 @@ async def _llm_call(messages, max_tokens=1500, temperature=0.1):
     )
 
 
+def _trim_patient_context(patient_context: dict, max_meds=5, max_obs=5, max_procs=5) -> dict:
+    """Create a smaller version of the patient context for LLM prompts."""
+    trimmed = {
+        "patient_info": patient_context.get("patient_info", {}),
+        "conditions": patient_context.get("conditions", [])[:3],
+        "active_medications": patient_context.get("active_medications", [])[:3],
+        "medication_history": patient_context.get("medication_history", [])[:max_meds],
+        "observations": patient_context.get("observations", [])[:max_obs],
+        "procedures": patient_context.get("procedures", [])[:max_procs],
+        "allergies": patient_context.get("allergies", [])[:3],
+        "fetch_errors": patient_context.get("fetch_errors", [])
+    }
+    return trimmed
+
+
 async def draft_pa_letter(
     drug_name: str,
     pa_criteria: dict,
@@ -68,7 +83,9 @@ async def draft_pa_letter(
     cms_timeline = urgency.get("cms_timeline", "")
 
     evidence_trail = match_result.get("fhir_evidence_trail", [])
-    evidence_trail_str = "\n".join(evidence_trail[:12]) if evidence_trail else "See patient record"
+    evidence_trail_str = "\n".join(evidence_trail[:5]) if evidence_trail else "See patient record"
+
+    trimmed_context = _trim_patient_context(patient_context)
 
     prompt = f"""You are a physician writing a Prior Authorization justification letter.
 Write with authority, precision, and strictly grounded clinical facts.
@@ -171,9 +188,10 @@ async def draft_appeal_letter(
     if denial_date: ref_block += f"\nDenial Date: {denial_date}"
 
     # Extract citations dynamically if not provided
-    citations = build_evidence_citations(patient_context)
+    trimmed_context = _trim_patient_context(patient_context)
+    citations = build_evidence_citations(trimmed_context)
     evidence_trail = format_evidence_trail(citations)
-    evidence_trail_str = "\n".join(evidence_trail[:10]) if evidence_trail else "See patient record"
+    evidence_trail_str = "\n".join(evidence_trail[:5]) if evidence_trail else "See patient record"
 
     prompt = f"""You are a board-certified physician writing a formal appeal letter for {drug_name}.
 Payer's denial: "{denial_reason}"

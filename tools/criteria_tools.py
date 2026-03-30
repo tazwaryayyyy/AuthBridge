@@ -215,6 +215,21 @@ def format_evidence_trail(citations: list) -> list:
     return trail
 
 
+def _trim_patient_context(patient_context: dict, max_meds=5, max_obs=5, max_procs=5) -> dict:
+    """Create a smaller version of the patient context for LLM prompts."""
+    trimmed = {
+        "patient_info": patient_context.get("patient_info", {}),
+        "conditions": patient_context.get("conditions", [])[:3],  # limit to 3 conditions
+        "active_medications": patient_context.get("active_medications", [])[:3],
+        "medication_history": patient_context.get("medication_history", [])[:max_meds],
+        "observations": patient_context.get("observations", [])[:max_obs],
+        "procedures": patient_context.get("procedures", [])[:max_procs],
+        "allergies": patient_context.get("allergies", [])[:3],
+        "fetch_errors": patient_context.get("fetch_errors", [])
+    }
+    return trimmed
+
+
 async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None) -> dict:
     criteria_db = _load_criteria()
     match = _fuzzy_match_drug(drug_name, criteria_db)
@@ -298,15 +313,17 @@ async def score_clinical_match(patient_context: dict, pa_criteria: dict) -> dict
     evidence_citations = build_evidence_citations(patient_context)
 
     # Stringify context for LLM
+    trimmed_context = _trim_patient_context(patient_context)
+
     def _json_summary(items, limit=15):
         return json.dumps(items[:limit], indent=2)
 
-    conditions_str = _json_summary([f"{c['display']} ({c['code']})" for c in patient_context.get("conditions", [])])
-    active_meds_str = _json_summary([f"{m['name']} ({m['rxnorm_code']})" for m in patient_context.get("active_medications", [])])
-    med_history_str = _json_summary([f"{m['name']} — {m['status']} — {m.get('reason_stopped', '')}" for m in patient_context.get("medication_history", [])])
-    obs_str = _json_summary([f"{o['name']}: {o['value']} {o['unit']}" for o in patient_context.get("observations", [])])
-    procedures_str = _json_summary([f"{p['name']} — {p.get('outcome', '')}" for p in patient_context.get("procedures", [])])
-    allergies_str = _json_summary([f"{a['substance']} ({a['criticality']})" for a in patient_context.get("allergies", [])])
+    conditions_str = _json_summary([f"{c['display']} ({c['code']})" for c in trimmed_context.get("conditions", [])])
+    active_meds_str = _json_summary([f"{m['name']} ({m['rxnorm_code']})" for m in trimmed_context.get("active_medications", [])])
+    med_history_str = _json_summary([f"{m['name']} — {m['status']} — {m.get('reason_stopped', '')}" for m in trimmed_context.get("medication_history", [])])
+    obs_str = _json_summary([f"{o['name']}: {o['value']} {o['unit']}" for o in trimmed_context.get("observations", [])])
+    procedures_str = _json_summary([f"{p['name']} — {p.get('outcome', '')}" for p in trimmed_context.get("procedures", [])])
+    allergies_str = _json_summary([f"{a['substance']} ({a['criticality']})" for a in trimmed_context.get("allergies", [])])
     notes_str = json.dumps(patient_context.get("clinical_notes", [])[:5], indent=2)
     
     criteria_weights_str = json.dumps(pa_criteria.get("criteria_weights", {}), indent=2)
