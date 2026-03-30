@@ -12,8 +12,13 @@
       color: #0f172a;
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       line-height: 1.5;
+      padding-bottom: 2rem;
     }
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
 
     /* Layout & Container */
     .container {
@@ -97,12 +102,11 @@
       font-family: inherit;
       font-size: 1rem;
     }
-    .btn-primary { background: #0f766e; color: white; width: 100%; }
-    .btn-primary:hover { background: #115e59; }
-    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-primary:active { transform: scale(0.98); }
     
     .btn-outline { background: white; border: 1px solid #cbd5e1; color: #334155; }
-    .btn-outline:hover { background: #f1f5f9; }
+    .btn-outline:hover { background: #f1f5f9; border-color: #94a3b8; }
+    .btn-outline:active { transform: scale(0.98); }
 
     /* Results Header / Badges */
     .results-header {
@@ -152,12 +156,28 @@
       display: none;
       width: 20px;
       height: 20px;
-      border: 3px solid rgba(255,255,255,0.3);
+      border: 3px solid rgba(255,255,255,0.2);
       border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1s ease-in-out infinite;
+      border-top-color: #ffffff;
+      border-right-color: #ffffff;
+      animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modern Alert Styles */
+    .alert-error {
+      margin-top: 1rem;
+      color: #991b1b;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .alert-error::before { content: '⚠️'; font-size: 1.1rem; }
 
     /* Hidden states */
     .hidden { display: none !important; }
@@ -193,41 +213,52 @@
       
       <form id="paForm" onsubmit="event.preventDefault(); runPA();">
         <div class="form-group">
+          <label style="color: #0f766e; font-weight: 700;">🚀 Quick Demo Case</label>
+          <select id="scenarioPicker" class="form-control" style="background: #f0fdfa; border-color: #99f6e4;" onchange="applyScenario()">
+            <option value="custom">-- Choose a test patient --</option>
+            <option value="crohns" selected>Sarah Thompson (Crohn's Disease)</option>
+            <option value="nsclc">Robert Chen (Lung Cancer - URGENT)</option>
+            <option value="endo">Maya Patel (Endometriosis)</option>
+            <option value="t2dm">Marcus Johnson (Diabetes)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="border-top: 1px dashed #e2e8f0; padding-top: 1.25rem;">
           <label for="patientId">Patient ID <span style="color:#ef4444">*</span></label>
-          <input type="text" id="patientId" class="form-control" placeholder="e.g. 592506 or synthetic-crohns-001" required aria-label="Patient ID" autocomplete="off" />
+          <input type="text" id="patientId" class="form-control" value="synthetic-crohns-001" placeholder="e.g. synthetic-crohns-001" required aria-label="Patient ID" autocomplete="off" />
         </div>
 
         <div class="form-group">
           <label for="drugName">Requested Drug <span style="color:#ef4444">*</span></label>
           <select id="drugName" class="form-control" required aria-label="Drug Name">
-            <option value="" disabled selected>Select from database...</option>
-            <option value="Humira">Adalimumab (Humira)</option>
+            <option value="" disabled>Select from database...</option>
+            <option value="Humira" selected>Adalimumab (Humira)</option>
             <option value="Keytruda">Pembrolizumab (Keytruda)</option>
             <option value="Ozempic">Semaglutide (Ozempic/Wegovy)</option>
-            <option value="Otezla">Apremilast (Otezla)</option>
             <option value="Orilissa">Elagolix (Orilissa)</option>
             <option value="Stelara">Ustekinumab (Stelara)</option>
             <option value="Skyrizi">Risankizumab (Skyrizi)</option>
             <option value="Dupixent">Dupilumab (Dupixent)</option>
             <option value="Rinvoq">Upadacitinib (Rinvoq)</option>
+            <option value="Otezla">Apremilast (Otezla)</option>
             <option value="Entresto">Sacubitril/Valsartan (Entresto)</option>
           </select>
         </div>
 
         <button type="submit" id="submitBtn" class="btn btn-primary" aria-label="Run Prior Authorization">
-          <span>Run PA Automation</span>
+          <span id="btnText">Run PA Automation</span>
           <div class="spinner" id="btnSpinner"></div>
         </button>
       </form>
       
-      <div id="errorAlert" class="hidden" style="margin-top: 1rem; color: #b91c1c; background: #fef2f2; padding: 1rem; border-radius: 8px; font-size: 0.875rem;"></div>
+      <div id="errorAlert" class="hidden alert-error" style="margin-top: 1rem;"></div>
     </div>
 
     <!-- Right Column: Results -->
     <div class="card" id="resultsCard" style="opacity: 0.5; pointer-events: none;">
       <h2 class="card-title">Clinical Output</h2>
       
-      <div id="resultsContent" class="hidden">
+      <div id="resultsContent" class="hidden fade-in">
         
         <div class="results-header">
           <div style="font-size: 1.5rem; font-weight: 800; color: #0f172a;" id="resScore">--/100</div>
@@ -280,13 +311,14 @@
     
     // UI Loading state
     btn.disabled = true;
+    document.getElementById('btnText').textContent = "Processing...";
     spinner.style.display = 'block';
     err.classList.add('hidden');
     document.getElementById('resultsCard').style.opacity = '1';
     document.getElementById('resultsCard').style.pointerEvents = 'auto';
     document.getElementById('emptyState').classList.remove('hidden');
     document.getElementById('resultsContent').classList.add('hidden');
-    document.getElementById('emptyState').innerHTML = '<div style="font-size: 2rem; margin-bottom: 1rem;">⚙️</div><p>Fetching FHIR records & generating clinical reasoning...</p>';
+    document.getElementById('emptyState').innerHTML = '<div class="spinner" style="display:block; margin: 0 auto 1.5rem; border-color: #cbd5e1; border-top-color: #0f766e; border-right-color: #0f766e; width: 40px; height: 40px;"></div><p style="font-weight: 500; font-size: 1.1rem; color: #0f766e;">Fetching FHIR context...</p><p style="font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">Authenticating with payer clinical engine</p>';
 
     try {
       const resp = await fetch('/api/run-pa', {
@@ -307,13 +339,34 @@
       document.getElementById('resultsContent').classList.remove('hidden');
       
     } catch (e) {
-      err.textContent = "Error: " + e.message;
+      err.textContent = e.message;
       err.classList.remove('hidden');
-      document.getElementById('emptyState').innerHTML = '<div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div><p>Workflow failed.</p>';
+      document.getElementById('emptyState').innerHTML = '<div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div><p style="font-weight: 600;">Automation Interrupted</p><p style="color:#64748b; font-size: 0.9rem; margin-top: 0.5rem;">Check Patient ID or Payer Criteria Availability</p>';
     } finally {
       btn.disabled = false;
+      document.getElementById('btnText').textContent = "Run PA Automation";
       spinner.style.display = 'none';
       setTimeout(() => { document.getElementById('copyBtn').textContent = "📋 Copy Letter"; }, 2000);
+    }
+  }
+
+  function applyScenario() {
+    const val = document.getElementById('scenarioPicker').value;
+    const pid = document.getElementById('patientId');
+    const drug = document.getElementById('drugName');
+    
+    if (val === 'crohns') {
+      pid.value = 'synthetic-crohns-001';
+      drug.value = 'Humira';
+    } else if (val === 'nsclc') {
+      pid.value = 'synthetic-nsclc-003';
+      drug.value = 'Keytruda';
+    } else if (val === 'endo') {
+      pid.value = 'synthetic-endo-004';
+      drug.value = 'Orilissa';
+    } else if (val === 't2dm') {
+      pid.value = 'synthetic-t2dm-002';
+      drug.value = 'Ozempic';
     }
   }
 
