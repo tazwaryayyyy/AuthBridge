@@ -67,7 +67,15 @@ For ALL prior authorization requests, call run_full_pa_workflow with:
 
 This single tool runs all 6 steps automatically and returns the complete output.
 
-After it returns, present to the clinician:
+For ALL appeal letter requests, call run_full_appeal_workflow with:
+- patient_id: the patient's FHIR ID
+- drug_name: the drug requiring PA
+- denial_reason: the specific denial reason from the payer
+- prescriber details if provided
+
+This single tool fetches patient context, looks up criteria, and drafts the appeal.
+
+After PA workflow returns, present to the clinician:
 1. Score and recommendation
 2. Urgency flag (if CMS-0057-F 72-hour review applies)
 3. Matched and missing criteria
@@ -75,10 +83,10 @@ After it returns, present to the clinician:
 5. Verification result (hallucination risk)
 6. Patient summary
 
-For appeal letters, call draft_appeal_letter separately with the denial reason.
+After appeal workflow returns, present the complete appeal letter.
 
-Never call fetch_patient_context, lookup_pa_criteria, or score_clinical_match 
-individually — always use run_full_pa_workflow for the complete workflow.
+Never call fetch_patient_context, lookup_pa_criteria, score_clinical_match, or draft_appeal_letter 
+individually — always use the unified workflow tools.
 """
 )
 
@@ -315,6 +323,37 @@ async def run_full_pa_workflow(
         "workflow_steps_completed": 6
     }
 
+@mcp.tool()
+async def run_full_appeal_workflow(
+    patient_id: str,
+    drug_name: str,
+    denial_reason: str,
+    prescriber_name: Optional[str] = None,
+    prescriber_npi: Optional[str] = None,
+    prescriber_specialty: Optional[str] = None,
+    prescriber_phone: Optional[str] = None,
+    practice_name: Optional[str] = None
+) -> dict:
+    """
+    Runs the complete appeal letter workflow in a single call.
+    Fetches FHIR patient context, looks up payer criteria, then drafts a formal appeal.
+    """
+    _validate_patient_id(patient_id)
+    patient_context = await _fetch_patient_context(patient_id)
+    pa_criteria = await _lookup_pa_criteria(drug_name)
+    appeal_result = await _draft_appeal_letter(
+        drug_name=drug_name,
+        denial_reason=denial_reason,
+        patient_context=patient_context,
+        pa_criteria=pa_criteria,
+        prescriber_name=prescriber_name,
+        prescriber_npi=prescriber_npi,
+        prescriber_specialty=prescriber_specialty,
+        prescriber_phone=prescriber_phone,
+        practice_name=practice_name
+    )
+    return appeal_result
+
 async def _single_pa_score(pid: str, drug_name: str) -> dict:
     pid = _validate_patient_id(pid)
     ctx = await _fetch_patient_context(pid)
@@ -486,11 +525,46 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
             logger.error(f"API Error: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    @limiter.limit("50/minute")
+    async def run_appeal_api(request):
+        # Request size limit 1MB
+        if int(request.headers.get("content-length", 0)) > 1024 * 1024:
+            return JSONResponse({"error": "Payload too large. Max 1MB."}, status_code=413)
+
+        try:
+            body = await request.json()
+        except:
+            return JSONResponse({"error": "Invalid JSON payload"}, status_code=400)
+            
+        patient_id = body.get("patient_id")
+        drug_name = body.get("drug_name")
+        denial_reason = body.get("denial_reason")
+        if not patient_id or not drug_name or not denial_reason:
+            return JSONResponse({"error": "Missing patient_id, drug_name, or denial_reason"}, status_code=400)
+            
+        try:
+            result = await run_full_appeal_workflow(
+                patient_id=patient_id,
+                drug_name=drug_name,
+                denial_reason=denial_reason,
+                prescriber_name=body.get("prescriber_name"),
+                prescriber_npi=body.get("prescriber_npi"),
+                prescriber_specialty=body.get("prescriber_specialty"),
+                prescriber_phone=body.get("prescriber_phone"),
+                practice_name=body.get("practice_name")
+            )
+            
+            return JSONResponse(result)
+        except Exception as e:
+            logger.error(f"Appeal API Error: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
     starlette_app = Starlette(
         routes=[
             Route("/", endpoint=serve_index),
             Route("/dashboard", endpoint=dashboard),
             Route("/api/run-pa", endpoint=run_pa_api, methods=["POST"]),
+            Route("/api/run-appeal", endpoint=run_appeal_api, methods=["POST"]),
             Route("/health", endpoint=health),
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse.handle_post_message),
