@@ -117,7 +117,27 @@ Drafts complete PA justification letter  ←── < 30 seconds total
 
 ## MCP Tools Reference
 
-### `fetch_patient_context(patient_id, fhir_base_url?)`
+### 🚀 **Unified Workflow Tools (Recommended)**
+
+### `run_full_pa_workflow(patient_id, drug_name, ...)`
+Runs the complete prior authorization workflow in a single call. Returns score, recommendation, urgency flag, letter, verification, and patient summary. This is the recommended tool for end-to-end PA automation.
+
+**Input:** `patient_id`, `drug_name`, optional prescriber details  
+**Output:** Complete PA workflow result including score, letter, evidence trail, verification, and patient summary
+
+### `run_full_appeal_workflow(patient_id, drug_name, denial_reason, ...)`
+Runs the complete appeal letter workflow in a single call. Fetches patient context, looks up criteria, and generates a formal appeal letter.
+
+**Input:** `patient_id`, `drug_name`, `denial_reason`, optional prescriber details  
+**Output:** Complete appeal letter with FHIR evidence trail and clinical justification
+
+---
+
+### 🔧 **Individual Tools (Legacy/Internal Use)**
+
+> **Note:** These tools are still available for granular control but are deprecated for direct use. The unified workflow tools above provide better reliability and complete automation.
+
+### `fetch_patient_context(patient_id, fhir_base_url?)` ⚠️ *Legacy*
 Fetches a comprehensive clinical snapshot from a FHIR R4 server.
 
 **Optimizations:**
@@ -139,7 +159,7 @@ Fetches a comprehensive clinical snapshot from a FHIR R4 server.
 
 ---
 
-### `lookup_pa_criteria(drug_name, indication?)`
+### `lookup_pa_criteria(drug_name, indication?)` ⚠️ *Legacy*
 @mcp.tool()
 async def lookup_pa_criteria(
     drug_name: str,
@@ -165,7 +185,7 @@ with full payer criteria, step therapy requirements, ICD-10 codes, and relevant 
 
 ---
 
-### `score_clinical_match(patient_context, pa_criteria)`
+### `score_clinical_match(patient_context, pa_criteria)` ⚠️ *Legacy*
 Scores how well a patient's FHIR record matches PA criteria.
 
 **Key Features:**
@@ -176,7 +196,7 @@ Scores how well a patient's FHIR record matches PA criteria.
 
 ---
 
-### `draft_pa_letter(...)`
+### `draft_pa_letter(...)` ⚠️ *Legacy*
 Generates a complete, payer-ready PA justification letter.
 
 **Format:** 5-paragraph formal clinical letter.
@@ -186,7 +206,7 @@ Generates a complete, payer-ready PA justification letter.
 
 ---
 
-### `draft_appeal_letter(...)`
+### `draft_appeal_letter(...)` ⚠️ *Legacy*
 Generates a formal appeal letter contesting a PA denial.
 
 **Format:** 6-paragraph firm appeal. Rebuts specific denial reason, cites clinical guidelines, quantifies patient safety risk, demands peer-to-peer physician review.
@@ -208,17 +228,19 @@ January 2027 and requires payers to respond to urgent requests within 72 hours.
 AuthBridge automatically detects cases qualifying for expedited review and 
 applies the 72-hour header to generated letters.
 
-## Architecture — 6 MCP Tools
+## Architecture — 8 MCP Tools
 
-| Tool | Purpose |
-|------|---------|
-| `fetch_patient_context` | FHIR R4 clinical record retrieval |
-| `lookup_pa_criteria` | Payer criteria database lookup |
-| `score_clinical_match` | Evidence scoring with CMS urgency detection |
-| `draft_pa_letter` | PA justification letter generation |
-| `draft_appeal_letter` | Denial appeal letter generation |
-| `verify_pa_letter` | AI self-audit for hallucination prevention |
-| `generate_patient_summary` | Plain-language patient portal summary |
+| Tool | Purpose | Status |
+|------|---------|---------|
+| `run_full_pa_workflow` | Complete PA automation in single call | 🚀 **Recommended** |
+| `run_full_appeal_workflow` | Complete appeal automation in single call | 🚀 **Recommended** |
+| `fetch_patient_context` | FHIR R4 clinical record retrieval | ⚠️ Legacy |
+| `lookup_pa_criteria` | Payer criteria database lookup | ⚠️ Legacy |
+| `score_clinical_match` | Evidence scoring with CMS urgency detection | ⚠️ Legacy |
+| `draft_pa_letter` | PA justification letter generation | ⚠️ Legacy |
+| `draft_appeal_letter` | Denial appeal letter generation | ⚠️ Legacy |
+| `verify_pa_letter` | AI self-audit for hallucination prevention | ⚠️ Legacy |
+| `generate_patient_summary` | Plain-language patient portal summary | ⚠️ Legacy |
 
 ### Detailed Documentation
 For deep dives into the protocol and scoring logic, see:
@@ -343,25 +365,33 @@ Your MCP server URL: `https://authbridge-mcp.onrender.com/sse`
 **Agent Name:** AuthBridge Orchestrator
 
 **System Prompt:**
-```
-You are AuthBridge, a clinical prior authorization specialist agent.
+You are AuthBridge, a prior authorization specialist agent.
 
-STANDARD PA WORKFLOW:
-1. Call fetch_patient_context to read the patient's FHIR record
-2. Call lookup_pa_criteria to get payer requirements for the drug
-3. Call score_clinical_match with both results
-4. Call draft_pa_letter with all gathered information
-5. Present score, matched/missing criteria, and the complete letter
+For ALL prior authorization requests, call run_full_pa_workflow with:
+- patient_id: the patient's FHIR ID
+- drug_name: the drug requiring PA
+- prescriber details if provided
 
-APPEAL WORKFLOW (when PA is denied):
-1. Call fetch_patient_context to refresh the patient record
-2. Call lookup_pa_criteria for the denied drug
-3. Call draft_appeal_letter with the specific denial reason
-4. Present the appeal letter and key arguments
+This single tool runs all 6 steps automatically and returns the complete output.
 
-Always explain findings in plain language before presenting letters.
-Flag any missing criteria and recommend what additional documentation is needed.
-```
+For ALL appeal letter requests, call run_full_appeal_workflow with:
+- patient_id: the patient's FHIR ID
+- drug_name: the drug requiring PA
+- denial_reason: the specific denial reason from the payer
+- prescriber details if provided
+
+After PA workflow returns, present to the clinician:
+1. Score and recommendation
+2. Urgency flag (if CMS-0057-F 72-hour review applies)
+3. Matched and missing criteria
+4. The complete PA letter
+5. Verification result (hallucination risk)
+6. Patient summary
+
+After appeal workflow returns, present the complete appeal letter.
+
+Never call fetch_patient_context, lookup_pa_criteria, score_clinical_match, draft_pa_letter, or draft_appeal_letter 
+individually — always use the unified workflow tools.
 
 **Enable tools:** All 5 AuthBridge tools
 **Enable SHARP context:** Yes (patient ID propagation)

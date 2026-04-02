@@ -1,6 +1,6 @@
 # AuthBridge MCP Tools Reference
 
-AuthBridge exposes 8 critical MCP tools designed specifically for Prior Authorization (PA) intelligence. These tools execute the complete workflow from FHIR evidence extraction to generating CMS-compliant PA justification and appeal letters.
+AuthBridge exposes 10 critical MCP tools designed specifically for Prior Authorization (PA) intelligence. These tools execute complete workflow from FHIR evidence extraction to generating CMS-compliant PA justification and appeal letters.
 
 ## How to Call These Tools via MCP Client
 
@@ -8,11 +8,89 @@ If you are using an A2A-compliant orchestrator (like Prompt Opinion) or a standa
 
 **SSE Endpoint:** `http://localhost:10000/sse` (Local) or `https://<render-app>.onrender.com/sse` (Production)
 
-Once connected, your client will automatically complete the `list_tools` handshake to discover the definitions below, and can execute them via the `call_tool` primitive.
+Once connected, your client will automatically complete `list_tools` handshake to discover the definitions below, and can execute them via `call_tool` primitive.
 
 ---
 
-## 1. `fetch_patient_context`
+## 🚀 **Unified Workflow Tools (Recommended)**
+
+## 1. `run_full_pa_workflow`
+**Description:** Runs the complete prior authorization workflow in a single call. Fetches FHIR patient context, looks up payer criteria, scores clinical evidence, drafts the PA justification letter, verifies it, and generates a patient summary. Returns the complete output including score, letter, urgency flag, and evidence trail.
+
+**Input Schema:**
+```json
+{
+  "patient_id": "string (Required: e.g., 'synthetic-crohns-001')",
+  "drug_name": "string (Required: e.g., 'Adalimumab')",
+  "prescriber_name": "string (Optional: Full name of prescribing physician)",
+  "prescriber_npi": "string (Optional: Prescriber NPI number)",
+  "prescriber_specialty": "string (Optional: Medical specialty)",
+  "prescriber_phone": "string (Optional: Direct phone for peer-to-peer review)",
+  "practice_name": "string (Optional: Practice or health system name)"
+}
+```
+
+**Output Example:**
+```json
+{
+  "patient": "Sarah Thompson",
+  "drug": "Adalimumab",
+  "score": 40,
+  "recommendation": "DENY",
+  "evidence_strength": "MODERATE",
+  "is_urgent": true,
+  "urgency_reason": "High-acuity clinical profile: Adalimumab (Humira)",
+  "cms_timeline": "72-hour payer response required — CMS-0057-F expedited review",
+  "matched_criteria": ["Confirmed diagnosis of moderate-to-severe Crohn's disease"],
+  "missing_criteria": ["Failure, intolerance, or contraindication to at least one conventional therapy"],
+  "fhir_evidence_trail": ["Condition/Condition/K50.90 — Crohn's disease — 2019-03-15"],
+  "letter": "URGENT PRIOR AUTHORIZATION — CMS-0057-F EXPEDITED RESPONSE REQUIRED...",
+  "verification": {"hallucination_risk": "LOW", "verified_claims": ["Diagnosis confirmed"]},
+  "patient_summary": "We submitted a request to your insurance for Adalimumab...",
+  "workflow_steps_completed": 6
+}
+```
+
+---
+
+## 2. `run_full_appeal_workflow`
+**Description:** Runs the complete appeal letter workflow in a single call. Fetches FHIR patient context, looks up payer criteria, and generates a formal appeal letter with clinical evidence and guideline citations.
+
+**Input Schema:**
+```json
+{
+  "patient_id": "string (Required: e.g., 'synthetic-crohns-001')",
+  "drug_name": "string (Required: e.g., 'Adalimumab')",
+  "denial_reason": "string (Required: Specific denial reason from payer)",
+  "prescriber_name": "string (Optional: Full name of prescribing physician)",
+  "prescriber_npi": "string (Optional: Prescriber NPI number)",
+  "prescriber_specialty": "string (Optional: Medical specialty)",
+  "prescriber_phone": "string (Optional: Direct phone for peer-to-peer review)",
+  "practice_name": "string (Optional: Practice or health system name)"
+}
+```
+
+**Output Example:**
+```json
+{
+  "success": true,
+  "appeal_letter": "[Your Practice Letterhead]...\nRe: Appeal for Denial of Adalimumab...",
+  "drug": "Adalimumab",
+  "patient": "Sarah Thompson",
+  "denial_reason": "Failure to meet step therapy requirements",
+  "fhir_evidence_trail": ["Condition/Condition/K50.90 — Crohn's disease — 2019-03-15"],
+  "word_count": 559,
+  "peer_to_peer_requested": true
+}
+```
+
+---
+
+## 🔧 **Individual Tools (Legacy/Internal Use)**
+
+> **Note:** These tools are still available for granular control but are deprecated for direct use. The unified workflow tools above provide better reliability and complete automation.
+
+## 3. `fetch_patient_context` ⚠️ *Legacy*
 **Description:** Fetches a comprehensive clinical snapshot for a patient from a FHIR R4 server, aggregating 7 resources concurrently.
 **Input Schema:**
 ```json
@@ -39,7 +117,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 2. `lookup_pa_criteria`
+## 4. `lookup_pa_criteria` ⚠️ *Legacy*
 **Description:** Retrieves granular payer coverage requirements, contraindications, and step-therapy rules for a specified drug.
 **Input Schema:**
 ```json
@@ -64,7 +142,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 3. `score_clinical_match`
+## 5. `score_clinical_match` ⚠️ *Legacy*
 **Description:** Analyzes the patient FHIR record against the PA criteria to yield an approval score and an exact evidence trail.
 **Input Schema:**
 ```json
@@ -88,7 +166,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 4. `draft_pa_letter`
+## 6. `draft_pa_letter` ⚠️ *Legacy*
 **Description:** Generates a formal, clinical-grade PA justification letter anchored strictly to the previously scored FHIR evidence.
 **Input Schema:**
 ```json
@@ -111,7 +189,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 5. `draft_appeal_letter`
+## 7. `draft_appeal_letter` ⚠️ *Legacy*
 **Description:** Generates a formal, escalated appeal letter explicitly rebutting a specific denial reason while demanding a peer-to-peer review.
 **Input Schema:**
 ```json
@@ -132,7 +210,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 6. `verify_pa_letter`
+## 8. `verify_pa_letter` ⚠️ *Legacy*
 **Description:** Protects against LLM hallucinations by auditing the generated PA letter to mathematically verify that every clinical claim maps directly back to the original FHIR record.
 **Input Schema:**
 ```json
@@ -154,7 +232,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 7. `generate_patient_summary`
+## 9. `generate_patient_summary` ⚠️ *Legacy*
 **Description:** Distills clinical approval hurdles into plain, compassionate language aimed at lowering patient anxiety in patient-portals.
 **Input Schema:**
 ```json
@@ -175,7 +253,7 @@ Once connected, your client will automatically complete the `list_tools` handsha
 
 ---
 
-## 8. `batch_pa_check`
+## 10. `batch_pa_check` ⚠️ *Legacy*
 **Description:** High-throughput population health endpoint that executes PA requirement scoring horizontally across multiple patient IDs at once.
 **Input Schema:**
 ```json

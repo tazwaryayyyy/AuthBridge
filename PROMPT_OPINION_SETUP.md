@@ -39,7 +39,48 @@ https://authbridge-mcp.onrender.com/sse
 
 ## Step 3 — Multi-Agent Configuration (A2A)
 
-In Prompt Opinion, create these 4 specialized sub-agents and 1 Orchestrator linking them:
+**Recommended: Use Unified Workflow Tools for Better Reliability**
+
+Instead of multi-agent orchestration, configure a single agent that uses the unified workflow tools:
+
+### Primary AuthBridge Agent
+- **Type**: Single Agent (Recommended)
+- **Name**: AuthBridge Orchestrator
+- **Description**: AuthBridge automates prior authorization end-to-end using FHIR records...
+- **System prompt**: 
+```
+You are AuthBridge, a prior authorization specialist agent.
+
+For ALL prior authorization requests, call run_full_pa_workflow with:
+- patient_id: the patient's FHIR ID
+- drug_name: the drug requiring PA
+- prescriber details if provided
+
+This single tool runs all 6 steps automatically and returns the complete output.
+
+For ALL appeal letter requests, call run_full_appeal_workflow with:
+- patient_id: the patient's FHIR ID
+- drug_name: the drug requiring PA
+- denial_reason: the specific denial reason from the payer
+- prescriber details if provided
+
+After PA workflow returns, present to the clinician:
+1. Score and recommendation
+2. Urgency flag (if CMS-0057-F 72-hour review applies)
+3. Matched and missing criteria
+4. The complete PA letter
+5. Verification result (hallucination risk)
+6. Patient summary
+
+After appeal workflow returns, present the complete appeal letter.
+
+Never call fetch_patient_context, lookup_pa_criteria, score_clinical_match, draft_pa_letter, or draft_appeal_letter 
+individually — always use the unified workflow tools.
+```
+- **Tools**: Enable `run_full_pa_workflow` and `run_full_appeal_workflow` only.
+
+### Alternative: Legacy Multi-Agent Setup
+If you prefer multi-agent orchestration, you can still use the original 4-agent setup:
 
 ### Agent 1: PA Detector
 - **Tools**: `fetch_patient_context`, `lookup_pa_criteria`
