@@ -259,11 +259,20 @@ FHIR EVIDENCE AVAILABLE:
 LETTER TO AUDIT:
 {letter}
 
-For every clinical claim in the letter, determine if it is supported by the FHIR evidence.
+For every clinical claim in the letter, determine if it is supported by FHIR evidence.
+Calculate confidence scores:
+- If claim maps directly to a FHIR resource → 0.95-1.0 confidence
+- If claim is inferred from clinical notes → 0.5-0.7 confidence
+- If claim has no supporting evidence → 0.0-0.3 confidence
+
 Return ONLY valid JSON:
 {{
-  "verified_claims": ["<claim> — confirmed: <FHIR resource>"],
-  "unverified_claims": ["<claim> — NOT found in FHIR record — requires clinician attestation"],
+  "verified_claims_with_confidence": [
+    {"claim": "<claim>", "confidence": <0.0-1.0>, "evidence": "<FHIR resource>"}
+  ],
+  "unverified_claims": [
+    {"claim": "<claim>", "confidence": <0.0-1.0>, "reason": "No FHIR support found"}
+  ],
   "hallucination_risk": "<LOW|MEDIUM|HIGH>",
   "overall_verdict": "<VERIFIED|NEEDS_REVIEW|REJECT>",
   "auditor_notes": "<1-2 sentence summary>"

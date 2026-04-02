@@ -299,9 +299,24 @@
     </div>
   </div>
 
+  <!-- Messy Data Demo Section -->
+    <div id="messyDemo" class="demo-section" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">🌪 Messy Data Demo</h3>
+          <p>Shows how AuthBridge handles uncertain or incomplete real-world data</p>
+        </div>
+        <div class="card-content">
+          <div id="messyResults"></div>
+        </div>
+      </div>
+    </div>
+
 </div>
 
 <script>
+  let startTime;
+  
   async function runPA() {
     const pid = document.getElementById('patientId').value.trim();
     const drug = document.getElementById('drugName').value;
@@ -309,15 +324,16 @@
     const spinner = document.getElementById('btnSpinner');
     const err = document.getElementById('errorAlert');
     
-    // UI Loading state
-    btn.disabled = true;
-    document.getElementById('btnText').textContent = "Processing...";
-    spinner.style.display = 'block';
-    err.classList.add('hidden');
-    document.getElementById('resultsCard').style.opacity = '1';
-    document.getElementById('resultsCard').style.pointerEvents = 'auto';
-    document.getElementById('emptyState').classList.remove('hidden');
+    // Reset UI state
+    document.getElementById('emptyState').classList.add('hidden');
     document.getElementById('resultsContent').classList.add('hidden');
+    
+    // Show loading state
+    btn.disabled = true;
+    btn.textContent = '⏳ Running...';
+    
+    startTime = Date.now();
+    
     document.getElementById('emptyState').innerHTML = '<div class="spinner" style="display:block; margin: 0 auto 1.5rem; border-color: #cbd5e1; border-top-color: #0f766e; border-right-color: #0f766e; width: 40px; height: 40px;"></div><p style="font-weight: 500; font-size: 1.1rem; color: #0f766e;">Fetching FHIR context...</p><p style="font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">Authenticating with payer clinical engine</p>';
 
     try {
@@ -333,7 +349,7 @@
         throw new Error(data.error || `HTTP error ${resp.status}`);
       }
       
-      populateResults(data);
+      populateResults(data, startTime);
       
       document.getElementById('emptyState').classList.add('hidden');
       document.getElementById('resultsContent').classList.remove('hidden');

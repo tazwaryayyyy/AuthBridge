@@ -214,6 +214,66 @@ SYNTHETIC_PATIENTS = {
         "allergies": [],
         "clinical_notes": [],
         "fetch_errors": []
+    },
+    "synthetic-messy-005": {
+        "patient_id": "synthetic-messy-005",
+        "patient_info": {
+            "id": "synthetic-messy-005",
+            "name": "Alex Chen",
+            "dob": "1985-09-23",
+            "gender": "male",
+            "active": True
+        },
+        "conditions": [
+            {
+                "code": "K50.90",
+                "display": "Crohn's disease",
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "clinical_status": "active",
+                "onset": "2020-01-15"
+            },
+            {
+                "code": "K52.9",
+                "display": "Crohn's disease of large intestine", 
+                "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                "clinical_status": "active",
+                "onset": "2020-06-20"
+            }
+        ],
+        "active_medications": [
+            {
+                "name": "Prednisone",
+                "rxnorm_code": "7648",
+                "status": "completed",
+                "intent": "order",
+                "authored_on": "2019-04-01",
+                "dosage": "40mg",
+                "reason": "Acute flare"
+            }
+        ],
+        "medication_history": [
+            {
+                "drug": "Azathioprine",
+                "status": "unknown",
+                "date_range": "2019-2020"
+            }
+        ],
+        "observations": [
+            {
+                "code": "18.7",
+                "display": "CRP",
+                "value": "18.7",
+                "unit": "mg/L",
+                "interpretation": "High",
+                "date_recorded": "2023-03-15"
+            }
+        ],
+        "data_quality": "messy",
+        "quality_issues": [
+            "Missing medication history for failed methotrexate trial",
+            "Conflicting diagnosis codes for same condition",
+            "Lab value out of expected range but ambiguous"
+        ]
     }
 }
 

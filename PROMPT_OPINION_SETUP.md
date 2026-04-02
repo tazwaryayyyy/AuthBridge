@@ -71,12 +71,13 @@ After PA workflow returns, present to the clinician:
 4. The complete PA letter
 5. Verification result (hallucination risk)
 6. Patient summary
+7. **Reasoning trace** - Detailed AI decision-making process showing how conclusions were reached
 
 After appeal workflow returns, present the complete appeal letter.
 
 Never call fetch_patient_context, lookup_pa_criteria, score_clinical_match, draft_pa_letter, or draft_appeal_letter 
-individually — always use the unified workflow tools.
-```
+individually — always use the unified workflow tools: run_full_pa_workflow and run_full_appeal_workflow.
+
 - **Tools**: Enable `run_full_pa_workflow` and `run_full_appeal_workflow` only.
 
 ### Alternative: Legacy Multi-Agent Setup

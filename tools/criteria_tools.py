@@ -328,6 +328,27 @@ async def score_clinical_match(patient_context: dict, pa_criteria: dict) -> dict
     
     criteria_weights_str = json.dumps(pa_criteria.get("criteria_weights", {}), indent=2)
 
+    # Check for data quality issues
+    data_quality_warnings = []
+    if "data_quality" in patient_context:
+        for issue in patient_context.get("data_quality", []):
+            data_quality_warnings.append(f"Data quality issue: {issue}")
+    
+    # Check for uncertain criteria
+    uncertain_criteria = []
+    criteria_list = pa_criteria.get("required_criteria", [])
+    for criterion in criteria_list:
+        # Simple heuristic: if criterion mentions multiple drugs or complex conditions, mark as uncertain
+        if any(term in criterion.lower() for term in ["or", "either", "multiple", "combination"]):
+            uncertain_criteria.append(criterion)
+    
+    # Add data quality and uncertainty to context for LLM
+    trimmed_context = _trim_patient_context(patient_context)
+    if data_quality_warnings:
+        trimmed_context["data_quality_warnings"] = data_quality_warnings
+    if uncertain_criteria:
+        trimmed_context["uncertain_criteria"] = uncertain_criteria
+
     prompt = f"""You are a clinical reviewer. Analyze if the patient meets PA criteria for {drug_name}.
 
 == PA CRITERIA ==
@@ -337,8 +358,8 @@ Step therapy: {json.dumps(pa_criteria.get('step_therapy_required', []), indent=2
 Criteria weights (CRITICAL items failing = automatic DENY, HIGH items failing = LIKELY_DENY):
 {criteria_weights_str}
 
-Apply these weights when calculating the score. A CRITICAL criterion not met 
-caps the score at 40. A HIGH criterion not met reduces score by 15 points each.
+Apply these weights when calculating score. A CRITICAL criterion not met 
+capsizes score at 40. A HIGH criterion not met reduces score by 15 points each.
 
 == PATIENT FHIR SNAPSHOT ==
 Conditions: {conditions_str}
@@ -347,9 +368,10 @@ History: {med_history_str}
 Observations: {obs_str}
 Procedures: {procedures_str}
 Allergies: {allergies_str}
+Clinical notes (unstructured): look for evidence of failed treatments, adverse reactions, or symptom descriptions that support criteria even if not in discrete fields.
 
-Clinical notes (unstructured): look for evidence of failed treatments, adverse reactions, or symptom descriptions that support the criteria even if not in discrete fields.
-{notes_str}
+Data Quality Warnings: {json.dumps(data_quality_warnings, indent=2)}
+Uncertain Criteria: {json.dumps(uncertain_criteria, indent=2)}
 
 Return ONLY valid JSON:
 {{
@@ -362,7 +384,10 @@ Return ONLY valid JSON:
   "flags": ["<clinical safety flags>"],
   "clinical_summary": "<3 sentence narrative>",
   "evidence_strength": "<STRONG|MODERATE|WEAK>",
-  "recommended_additional_docs": ["<specific requests>"]
+  "recommended_additional_docs": ["<specific requests>"],
+  "urgency": {json.dumps(urgency, indent=2)},
+  "evidence_citations": evidence_citations,
+  "fhir_evidence_trail": format_evidence_trail(evidence_citations)
 }}"""
 
     try:
@@ -391,6 +416,7 @@ Return ONLY valid JSON:
         result["urgency"] = urgency
         result["evidence_citations"] = evidence_citations
         result["fhir_evidence_trail"] = format_evidence_trail(evidence_citations)
+        result["uncertain_criteria"] = uncertain_criteria
 
         return result
 

@@ -33,7 +33,13 @@ Prior Authorization (PA) is the most hated administrative process in medicine �
 
 Physicians spend more time on PA paperwork than in direct patient care. Patients with cancer, Crohn's disease, heart failure, and dozens of other serious conditions wait days for insurance approval — while their disease progresses.
 
-No open, interoperable PA solution exists. Commercial tools (Cohere Health, Infinitus) are closed black boxes locked to specific payers. **AuthBridge is the first open-standards PA intelligence layer** — built on MCP + A2A + FHIR, discoverable in a marketplace, and invokable by any compliant health system.
+No fully open, LLM-driven, end-to-end prior authorization automation layer exists on open standards (MCP + A2A + FHIR).
+
+---
+
+## Why Now
+
+CMS-0057-F mandates FHIR-based prior authorization APIs by January 2027. Every major US payer must implement compliant endpoints within 18 months. AuthBridge is architected to integrate directly with these mandated APIs the moment they go live. This regulatory window makes open-standards PA infrastructure critical.
 
 ---
 

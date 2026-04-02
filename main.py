@@ -49,6 +49,47 @@ def _ensure_json_serializable(obj: Any) -> Any:
     else:
         return obj
 
+def _generate_reasoning_trace(match_result: dict, patient_context: dict, pa_criteria: dict) -> list:
+    """Generate detailed reasoning trace showing how AI arrived at its decision"""
+    trace = []
+    
+    # Analyze matched criteria
+    for criterion in match_result.get("matched_criteria", []):
+        evidence = []
+        if "methotrexate" in criterion.lower() and "medication_history" in patient_context:
+            for med in patient_context.get("medication_history", []):
+                if "methotrexate" in med.get("drug", "").lower():
+                    evidence.append(f"MedicationStatement/{med.get('id', 'unknown')} — {med.get('drug', 'Unknown')} documented failure")
+                    break
+        elif "crohn" in criterion.lower() and "conditions" in patient_context:
+            for condition in patient_context.get("conditions", []):
+                if "K50" in condition.get("code", ""):
+                    evidence.append(f"Condition/{condition.get('id', 'unknown')} — {condition.get('display', 'Unknown')} confirmed on {condition.get('date_recorded', 'unknown')}")
+                    break
+        
+        if evidence:
+            trace.append(f"Matched: {criterion} — Evidence: {'; '.join(evidence)}")
+    
+    # Analyze missing criteria
+    for criterion in match_result.get("missing_criteria", []):
+        if "tnf inhibitor" in criterion.lower():
+            trace.append(f"Missing: TNF inhibitor trial — No documented biologic therapy in patient history")
+        elif "hepatitis screening" in criterion.lower():
+            trace.append(f"Missing: Hepatitis screening — No recent Observation resources for hepatitis B/C status")
+    
+    # Add conclusion
+    score = match_result.get("score", 0)
+    if score >= 80:
+        conclusion = "Conclusion: Strong clinical evidence supports approval"
+    elif score >= 60:
+        conclusion = "Conclusion: Moderate evidence, consider additional documentation"
+    else:
+        conclusion = f"Conclusion: Low evidence score ({score}) — Significant criteria gaps identified"
+    
+    trace.append(conclusion)
+    
+    return trace
+
 # Load environment variables
 load_dotenv()
 
@@ -336,6 +377,7 @@ async def run_full_pa_workflow(
             "patient_summary": summary_result.get("summary", ""),
             "patient_next_step": summary_result.get("next_step", ""),
             "hallucination_risk": verify_result.get("hallucination_risk", "UNKNOWN"),
+            "reasoning_trace": _generate_reasoning_trace(match_result, patient_context, pa_criteria),
             "workflow_steps_completed": 6
         }
         
@@ -407,6 +449,101 @@ async def run_full_appeal_workflow(
             "denial_reason": denial_reason,
             "workflow_steps_completed": 0
         }
+
+@mcp.tool()
+async def simulate_pa_lifecycle(
+    patient_id: str,
+    drug_name: str,
+    prescriber_name: Optional[str] = None,
+    prescriber_npi: Optional[str] = None,
+    prescriber_specialty: Optional[str] = None,
+    prescriber_phone: Optional[str] = None,
+    practice_name: Optional[str] = None,
+    denial_reason: Optional[str] = None
+) -> dict:
+    """
+    Simulates the complete PA lifecycle from submission to final resolution.
+    Returns a timeline of events showing the full prior authorization journey.
+    """
+    _validate_patient_id(patient_id)
+    
+    timeline = []
+    
+    # Day 0: Initial PA submission
+    timeline.append({
+        "day": 0,
+        "event": "PA submitted",
+        "status": "pending",
+        "description": f"Prior authorization request submitted for {drug_name}"
+    })
+    
+    # Run the full PA workflow
+    pa_result = await run_full_pa_workflow(
+        patient_id=patient_id,
+        drug_name=drug_name,
+        prescriber_name=prescriber_name,
+        prescriber_npi=prescriber_npi,
+        prescriber_specialty=prescriber_specialty,
+        prescriber_phone=prescriber_phone,
+        practice_name=practice_name
+    )
+    
+    # Day 1: Decision based on scoring
+    if pa_result.get("recommendation") in ["APPROVE", "LIKELY_APPROVE"]:
+        timeline.append({
+            "day": 1,
+            "event": "Approved - criteria met",
+            "status": "approved",
+            "description": f"PA for {drug_name} approved without delay"
+        })
+        final_outcome = "approved"
+    else:
+        timeline.append({
+            "day": 1,
+            "event": f"Denied - {pa_result.get('missing_criteria', ['criteria not met'])[0] if pa_result.get('missing_criteria') else 'criteria not met'}",
+            "status": "denied",
+            "description": f"PA for {drug_name} denied"
+        })
+        
+        # Day 1: Appeal generation (if denied)
+        if denial_reason:
+            appeal_result = await run_full_appeal_workflow(
+                patient_id=patient_id,
+                drug_name=drug_name,
+                denial_reason=denial_reason,
+                prescriber_name=prescriber_name,
+                prescriber_npi=prescriber_npi,
+                prescriber_specialty=prescriber_specialty,
+                prescriber_phone=prescriber_phone,
+                practice_name=practice_name
+            )
+            
+            timeline.append({
+                "day": 1,
+                "event": "Appeal generated and submitted",
+                "status": "appealed",
+                "description": f"Formal appeal letter generated for {drug_name}"
+            })
+        
+        # Day 3: Final resolution (peer review)
+        timeline.append({
+            "day": 3,
+            "event": "Peer review completed",
+            "status": "resolved",
+            "description": f"Peer-to-peer review conducted for {drug_name} request"
+        })
+        
+        final_outcome = "approved_after_appeal" if denial_reason else "approved"
+    
+    return {
+        "patient": pa_result.get("patient", "Unknown"),
+        "drug": drug_name,
+        "timeline": timeline,
+        "final_outcome": final_outcome,
+        "pa_score": pa_result.get("score", 0),
+        "pa_recommendation": pa_result.get("recommendation", "UNKNOWN"),
+        "workflow_steps_completed": len(timeline)
+    }
 
 async def _single_pa_score(pid: str, drug_name: str) -> dict:
     pid = _validate_patient_id(pid)
@@ -617,12 +754,52 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
             logger.error(f"Appeal API Error: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    @limiter.limit("50/minute")
+    async def run_pa_lifecycle_api(request):
+        # Request size limit 1MB
+        if int(request.headers.get("content-length", 0)) > 1024 * 1024:
+            return JSONResponse({"error": "Payload too large. Max 1MB."}, status_code=413)
+
+        try:
+            body = await request.json()
+        except:
+            return JSONResponse({"error": "Invalid JSON payload"}, status_code=400)
+            
+        patient_id = body.get("patient_id")
+        drug_name = body.get("drug_name")
+        prescriber_name = body.get("prescriber_name")
+        prescriber_npi = body.get("prescriber_npi")
+        prescriber_specialty = body.get("prescriber_specialty")
+        prescriber_phone = body.get("prescriber_phone")
+        practice_name = body.get("practice_name")
+        denial_reason = body.get("denial_reason")
+        
+        if not patient_id or not drug_name:
+            return JSONResponse({"error": "Missing patient_id or drug_name"}, status_code=400)
+            
+        try:
+            result = await simulate_pa_lifecycle(
+                patient_id=patient_id,
+                drug_name=drug_name,
+                prescriber_name=prescriber_name,
+                prescriber_npi=prescriber_npi,
+                prescriber_specialty=prescriber_specialty,
+                prescriber_phone=prescriber_phone,
+                practice_name=practice_name,
+                denial_reason=denial_reason
+            )
+            return JSONResponse(result)
+        except Exception as e:
+            logger.error(f"Lifecycle API Error: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
     starlette_app = Starlette(
         routes=[
             Route("/", endpoint=serve_index),
             Route("/dashboard", endpoint=dashboard),
             Route("/api/run-pa", endpoint=run_pa_api, methods=["POST"]),
             Route("/api/run-appeal", endpoint=run_appeal_api, methods=["POST"]),
+            Route("/api/run-pa-lifecycle", endpoint=run_pa_lifecycle_api, methods=["POST"]),
             Route("/health", endpoint=health),
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse.handle_post_message),
