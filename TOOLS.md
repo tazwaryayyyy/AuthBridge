@@ -47,9 +47,19 @@ Once connected, your client will automatically complete `list_tools` handshake t
   "letter": "URGENT PRIOR AUTHORIZATION — CMS-0057-F EXPEDITED RESPONSE REQUIRED...",
   "verification": {"hallucination_risk": "LOW", "verified_claims": ["Diagnosis confirmed"]},
   "patient_summary": "We submitted a request to your insurance for Adalimumab...",
-  "workflow_steps_completed": 6
+  "workflow_steps_completed": 6,
+  "total": 10
 }
-```
+
+---
+
+## Author
+
+Created by [Tazwar Ahnnaf Enan](https://x.com/TazwarEnan) | [X (Twitter)](https://x.com/TazwarEnan)
+
+## License
+
+MIT License — open for the entire healthcare AI ecosystem.
 
 ---
 

@@ -500,3 +500,6 @@ MIT License — open for the entire healthcare AI ecosystem.
 
 *Built for the Agents Assemble: Healthcare AI Endgame Challenge 2026*
 *Prompt Opinion Platform · MCP + A2A + FHIR R4*
+*USCDI v1.1*
+
+Created by [Tazwar Ahnnaf Enan](https://x.com/TazwarEnan) | <a href="https://x.com/TazwarEnan" target="_blank">X (Twitter)</a>

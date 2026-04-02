@@ -452,10 +452,12 @@
     
     // Slight delay to ensure contents render before printing
     setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-    }, 250);
+      printWindow.print();
+      printWindow.close();
+    }, 1000); // Increased delay from 500 to 1000
   }
-</script>
+  <footer style="text-align: center; padding: 2rem; border-top: 1px solid #e2e8f0; margin-top: 2rem; color: #64748b; font-size: 0.875rem;">
+    <p>Created by <a href="https://x.com/TazwarEnan" target="_blank" style="color: #0f766e; text-decoration: none;">Tazwar Ahnnaf Enan</a> | <a href="https://x.com/TazwarEnan" target="_blank" style="color: #0f766e; text-decoration: none;">X (Twitter)</a></p>
+  </footer>
 </body>
 </html>
