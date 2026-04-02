@@ -58,22 +58,27 @@ from tools.letter_tools import generate_patient_summary as _generate_patient_sum
 mcp = FastMCP(
     name="authbridge",
     instructions="""
-You are AuthBridge, a specialized clinical prior authorization assistant.
-You have access to 5 clinical tools that work together to automate PA workflows.
+You are AuthBridge, a prior authorization specialist agent.
 
-STANDARD PA WORKFLOW:
-1. fetch_patient_context — Read the patient's FHIR clinical record
-2. lookup_pa_criteria — Get the payer's PA requirements for the drug
-3. score_clinical_match — Analyze how well the patient's record matches criteria
-4. draft_pa_letter — Generate the complete PA justification letter
+For ALL prior authorization requests, call run_full_pa_workflow with:
+- patient_id: the patient's FHIR ID
+- drug_name: the drug requiring PA
+- prescriber details if provided
 
-APPEAL WORKFLOW:
-1. fetch_patient_context + lookup_pa_criteria
-2. draft_appeal_letter — Generate a formal appeal rebuttal
+This single tool runs all 6 steps automatically and returns the complete output.
 
-Always run the workflow in sequence. Present findings with FHIR evidence trails.
-Flag any missing criteria and recommend documentation.
-Use synthetic data only — never process real PHI.
+After it returns, present to the clinician:
+1. Score and recommendation
+2. Urgency flag (if CMS-0057-F 72-hour review applies)
+3. Matched and missing criteria
+4. The complete PA letter
+5. Verification result (hallucination risk)
+6. Patient summary
+
+For appeal letters, call draft_appeal_letter separately with the denial reason.
+
+Never call fetch_patient_context, lookup_pa_criteria, or score_clinical_match 
+individually — always use run_full_pa_workflow for the complete workflow.
 """
 )
 
@@ -204,6 +209,111 @@ async def generate_patient_summary(
     Based on Dr. Proctor's CHIPPER app philosophy at CHOP.
     """
     return await _generate_patient_summary(drug_name, match_result, patient_context, pa_criteria)
+
+@mcp.tool()
+async def run_full_pa_workflow(
+    patient_id: str,
+    drug_name: str,
+    prescriber_name: Optional[str] = None,
+    prescriber_npi: Optional[str] = None,
+    prescriber_specialty: Optional[str] = None,
+    prescriber_phone: Optional[str] = None,
+    practice_name: Optional[str] = None
+) -> dict:
+    """
+    Runs the complete AuthBridge prior authorization workflow in a single call.
+    Fetches FHIR patient context, looks up payer criteria, scores clinical evidence,
+    drafts the PA justification letter, verifies it, and generates a patient summary.
+    Returns the complete output including score, letter, urgency flag, and evidence trail.
+    Use this for the full end-to-end PA automation workflow.
+    
+    Args:
+        patient_id: FHIR patient resource ID
+        drug_name: Generic or brand name of drug requiring PA
+        prescriber_name: Full name of prescribing physician (optional)
+        prescriber_npi: Prescriber NPI number (optional)
+        prescriber_specialty: Medical specialty (optional)
+        prescriber_phone: Direct phone for peer-to-peer review (optional)
+        practice_name: Practice or health system name (optional)
+    """
+    _validate_patient_id(patient_id)
+    logger.info(f"Running full PA workflow: patient={patient_id}, drug={drug_name}")
+
+    # Step 1: FHIR
+    patient_context = await _fetch_patient_context(patient_id)
+
+    # Step 2: Criteria
+    pa_criteria = await _lookup_pa_criteria(drug_name)
+
+    # Step 3: Score
+    match_result = await _score_clinical_match(patient_context, pa_criteria)
+
+    # Step 4: Letter
+    letter_result = await _draft_pa_letter(
+        drug_name=pa_criteria.get("drug_name", drug_name),
+        pa_criteria=pa_criteria,
+        match_result=match_result,
+        patient_context=patient_context,
+        prescriber_name=prescriber_name,
+        prescriber_npi=prescriber_npi,
+        prescriber_specialty=prescriber_specialty,
+        prescriber_phone=prescriber_phone,
+        practice_name=practice_name
+    )
+
+    # Step 5: Verify
+    verify_result = {}
+    if letter_result.get("success") and letter_result.get("letter"):
+        try:
+            verify_result = await _verify_pa_letter(
+                letter=letter_result["letter"],
+                patient_context=patient_context,
+                match_result=match_result
+            )
+        except Exception as e:
+            verify_result = {"error": str(e)}
+
+    # Step 6: Patient summary
+    summary_result = {}
+    try:
+        summary_result = await _generate_patient_summary(
+            drug_name=pa_criteria.get("drug_name", drug_name),
+            match_result=match_result,
+            patient_context=patient_context,
+            pa_criteria=pa_criteria
+        )
+    except Exception as e:
+        summary_result = {"error": str(e)}
+
+    urgency = match_result.get("urgency", {})
+    _metrics["total_pa_letters"] += 1
+    if urgency.get("is_urgent"):
+        _metrics["urgent_cases"] += 1
+    if match_result.get("recommendation") in ("APPROVE", "LIKELY_APPROVE"):
+        _metrics["approve_count"] += 1
+
+    return {
+        "patient": patient_context.get("patient_info", {}).get("name", "Unknown"),
+        "drug": pa_criteria.get("drug_name", drug_name),
+        "score": match_result.get("score", 0),
+        "recommendation": match_result.get("recommendation", "UNKNOWN"),
+        "evidence_strength": match_result.get("evidence_strength", "UNKNOWN"),
+        "is_urgent": urgency.get("is_urgent", False),
+        "urgency_reason": urgency.get("urgency_reason", ""),
+        "cms_timeline": urgency.get("cms_timeline", ""),
+        "matched_criteria": match_result.get("matched_criteria", []),
+        "missing_criteria": match_result.get("missing_criteria", []),
+        "step_therapy_evidence": match_result.get("step_therapy_evidence", []),
+        "fhir_evidence_trail": match_result.get("fhir_evidence_trail", []),
+        "clinical_summary": match_result.get("clinical_summary", ""),
+        "letter": letter_result.get("letter", ""),
+        "letter_word_count": letter_result.get("word_count", 0),
+        "verification": verify_result,
+        "patient_summary": summary_result.get("summary", ""),
+        "patient_next_step": summary_result.get("next_step", ""),
+        "hallucination_risk": verify_result.get("hallucination_risk", "UNKNOWN"),
+        "workflow_steps_completed": 6
+    }
 
 async def _single_pa_score(pid: str, drug_name: str) -> dict:
     pid = _validate_patient_id(pid)
