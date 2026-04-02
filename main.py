@@ -13,6 +13,7 @@ import os
 import logging
 import re
 import asyncio
+import json
 from typing import Optional, Dict, Any
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
@@ -33,6 +34,20 @@ def _validate_patient_id(patient_id: str) -> str:
     if not re.match(r'^[a-zA-Z0-9\-_.]{1,64}$', patient_id):
         raise ValueError(f"Invalid patient_id format: {patient_id}")
     return patient_id
+
+def _ensure_json_serializable(obj: Any) -> Any:
+    """Ensure object is JSON serializable, convert None to empty strings where appropriate"""
+    if obj is None:
+        return ""
+    elif isinstance(obj, dict):
+        return {k: _ensure_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_ensure_json_serializable(item) for item in obj]
+    elif hasattr(obj, '__dict__'):
+        # Convert objects with __dict__ to their string representation
+        return str(obj)
+    else:
+        return obj
 
 # Load environment variables
 load_dotenv()
@@ -300,28 +315,47 @@ async def run_full_pa_workflow(
     if match_result.get("recommendation") in ("APPROVE", "LIKELY_APPROVE"):
         _metrics["approve_count"] += 1
 
-    return {
-        "patient": patient_context.get("patient_info", {}).get("name", "Unknown"),
-        "drug": pa_criteria.get("drug_name", drug_name),
-        "score": match_result.get("score", 0),
-        "recommendation": match_result.get("recommendation", "UNKNOWN"),
-        "evidence_strength": match_result.get("evidence_strength", "UNKNOWN"),
-        "is_urgent": urgency.get("is_urgent", False),
-        "urgency_reason": urgency.get("urgency_reason", ""),
-        "cms_timeline": urgency.get("cms_timeline", ""),
-        "matched_criteria": match_result.get("matched_criteria", []),
-        "missing_criteria": match_result.get("missing_criteria", []),
-        "step_therapy_evidence": match_result.get("step_therapy_evidence", []),
-        "fhir_evidence_trail": match_result.get("fhir_evidence_trail", []),
-        "clinical_summary": match_result.get("clinical_summary", ""),
-        "letter": letter_result.get("letter", ""),
-        "letter_word_count": letter_result.get("word_count", 0),
-        "verification": verify_result,
-        "patient_summary": summary_result.get("summary", ""),
-        "patient_next_step": summary_result.get("next_step", ""),
-        "hallucination_risk": verify_result.get("hallucination_risk", "UNKNOWN"),
-        "workflow_steps_completed": 6
-    }
+    try:
+        result = {
+            "patient": patient_context.get("patient_info", {}).get("name", "Unknown"),
+            "drug": pa_criteria.get("drug_name", drug_name),
+            "score": match_result.get("score", 0),
+            "recommendation": match_result.get("recommendation", "UNKNOWN"),
+            "evidence_strength": match_result.get("evidence_strength", "UNKNOWN"),
+            "is_urgent": urgency.get("is_urgent", False),
+            "urgency_reason": urgency.get("urgency_reason", ""),
+            "cms_timeline": urgency.get("cms_timeline", ""),
+            "matched_criteria": match_result.get("matched_criteria", []),
+            "missing_criteria": match_result.get("missing_criteria", []),
+            "step_therapy_evidence": match_result.get("step_therapy_evidence", []),
+            "fhir_evidence_trail": match_result.get("fhir_evidence_trail", []),
+            "clinical_summary": match_result.get("clinical_summary", ""),
+            "letter": letter_result.get("letter", ""),
+            "letter_word_count": letter_result.get("word_count", 0),
+            "verification": verify_result,
+            "patient_summary": summary_result.get("summary", ""),
+            "patient_next_step": summary_result.get("next_step", ""),
+            "hallucination_risk": verify_result.get("hallucination_risk", "UNKNOWN"),
+            "workflow_steps_completed": 6
+        }
+        
+        # Ensure JSON serializable
+        serializable_result = _ensure_json_serializable(result)
+        
+        # Test serialization
+        json.dumps(serializable_result)
+        
+        logger.info(f"Successfully created result for PA workflow: patient={patient_id}, drug={drug_name}")
+        return serializable_result
+    except Exception as e:
+        logger.error(f"Error creating PA workflow result: {e}")
+        return {
+            "error": str(e),
+            "success": False,
+            "patient": patient_context.get("patient_info", {}).get("name", "Unknown"),
+            "drug": pa_criteria.get("drug_name", drug_name),
+            "workflow_steps_completed": 0
+        }
 
 @mcp.tool()
 async def run_full_appeal_workflow(
@@ -352,7 +386,27 @@ async def run_full_appeal_workflow(
         prescriber_phone=prescriber_phone,
         practice_name=practice_name
     )
-    return appeal_result
+    
+    try:
+        logger.info(f"Successfully created result for appeal workflow: patient={patient_id}, drug={drug_name}")
+        
+        # Ensure JSON serializable
+        serializable_result = _ensure_json_serializable(appeal_result)
+        
+        # Test serialization
+        json.dumps(serializable_result)
+        
+        return serializable_result
+    except Exception as e:
+        logger.error(f"Error creating appeal workflow result: {e}")
+        return {
+            "error": str(e),
+            "success": False,
+            "patient": patient_context.get("patient_info", {}).get("name", "Unknown"),
+            "drug": drug_name,
+            "denial_reason": denial_reason,
+            "workflow_steps_completed": 0
+        }
 
 async def _single_pa_score(pid: str, drug_name: str) -> dict:
     pid = _validate_patient_id(pid)
@@ -480,13 +534,17 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
     @limiter.limit("5/minute")
     async def handle_sse(request):
         # Correctly wire FastMCP's internal server to the SSE transport
-        async with sse.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
-            await mcp._mcp_server.run(
-                streams[0], streams[1],
-                mcp._mcp_server.create_initialization_options()
-            )
+        try:
+            async with sse.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await mcp._mcp_server.run(
+                    streams[0], streams[1],
+                    mcp._mcp_server.create_initialization_options()
+                )
+        except Exception as e:
+            logger.error(f"SSE connection error: {e}")
+            # Don't return anything here - SSE streams handle their own responses
 
     @limiter.limit("50/minute")
     async def run_pa_api(request):
