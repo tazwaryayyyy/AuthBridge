@@ -3,7 +3,6 @@
 
 > *From 5 days to 30 seconds. The first open-standards PA automation agent — FHIR-native, marketplace-discoverable, and invokable by any compliant system.*
 
-[![Built for Agents Assemble 2026](https://img.shields.io/badge/Agents%20Assemble-Healthcare%20AI%20Endgame-blue)](https://agents-assemble.devpost.com)
 [![MCP](https://img.shields.io/badge/Protocol-MCP-green)](https://modelcontextprotocol.io)
 [![FHIR R4](https://img.shields.io/badge/Standard-FHIR%20R4-orange)](https://hl7.org/fhir/R4/)
 [![A2A](https://img.shields.io/badge/Standard-A2A-purple)](https://a2aprotocol.ai)
@@ -498,7 +497,6 @@ MIT License — open for the entire healthcare AI ecosystem.
 
 ---
 
-*Built for the Agents Assemble: Healthcare AI Endgame Challenge 2026*
 *Prompt Opinion Platform · MCP + A2A + FHIR R4*
 *USCDI v1.1*
 

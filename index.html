@@ -1,463 +1,2289 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AuthBridge — Prior Authorization SPA</title>
+  <title>AuthBridge — Clinical PA System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;1,400&display=swap"
+    rel="stylesheet">
   <style>
-    /* Reset & Clean Defaults */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #f4f4f1;
+      --surface: #ffffff;
+      --surface-2: #f0f0ed;
+      --surface-3: #e8e8e4;
+      --border: #d4d4cf;
+      --border-strong: #b8b8b2;
+      --text-primary: #1a1a18;
+      --text-secondary: #4a4a46;
+      --text-muted: #8a8a84;
+      --teal: #0d6b5e;
+      --teal-light: #e8f4f2;
+      --teal-mid: #c2e0db;
+      --blue: #1e4d8c;
+      --blue-light: #e8eef7;
+      --amber: #8a5a00;
+      --amber-light: #fef7e8;
+      --amber-border: #f0c844;
+      --red: #8b1a1a;
+      --red-light: #fdf0f0;
+      --red-border: #e88080;
+      --green: #1a5c2a;
+      --green-light: #edf7f0;
+      --green-border: #80cc96;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --font-ui: 'IBM Plex Sans', system-ui, sans-serif;
+      --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+      --font-letter: 'IBM Plex Serif', Georgia, serif;
+      --radius: 4px;
+      --radius-md: 6px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
-      background: #f8fafc;
-      color: #0f172a;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
+      font-size: 14px;
       line-height: 1.5;
-      padding-bottom: 2rem;
+      min-height: 100vh;
     }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-    /* Animations */
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
-
-    /* Layout & Container */
-    .container {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 2rem;
+    /* ── SYSTEM BAR ─────────────────────────────────────────── */
+    .sysbar {
+      background: var(--text-primary);
+      color: #9a9a94;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 0 24px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: 0.02em;
     }
+
+    .sysbar-left {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .sysbar-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #3fb950;
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.5
+      }
+    }
+
+    .sysbar a {
+      color: #9a9a94;
+      text-decoration: none;
+    }
+
+    .sysbar a:hover {
+      color: #c8c8c0;
+    }
+
+    .env-tag {
+      background: #2a4a2a;
+      color: #3fb950;
+      padding: 1px 8px;
+      border-radius: 2px;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────────── */
     .header {
-      padding: 2rem 0;
-      border-bottom: 1px solid #e2e8f0;
-      margin-bottom: 2rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--teal);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .logo-text h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .logo-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-link {
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    .nav-link:hover {
+      background: var(--surface-2);
+    }
+
+    /* ── MAIN LAYOUT ────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 84px);
+    }
+
+    /* ── LEFT PANEL ─────────────────────────────────────────── */
+    .left-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-section:last-child {
+      border-bottom: none;
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Workflow stages */
+    .workflow-stages {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 16px;
+    }
+
+    .stage {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    .stage.active {
+      background: var(--teal-light);
+      color: var(--teal);
+      font-weight: 500;
+    }
+
+    .stage.done {
+      color: var(--green);
+    }
+
+    .stage.blocked {
+      color: var(--red);
+    }
+
+    .stage-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .stage.done .stage-num {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .stage.done .stage-num::before {
+      content: '✓';
+    }
+
+    .stage.done .stage-num span {
+      display: none;
+    }
+
+    .stage.blocked .stage-num {
+      background: var(--red-light);
+      border-color: var(--red-border);
+    }
+
+    /* Form elements */
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+    }
+
+    .field-note {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .required {
+      color: var(--red);
+      margin-left: 2px;
+    }
+
+    .input,
+    select.input,
+    textarea.input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: var(--font-ui);
+      background: var(--surface);
+      color: var(--text-primary);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      appearance: none;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px rgba(13, 107, 94, 0.12);
+    }
+
+    .input.has-error {
+      border-color: var(--red-border);
+    }
+
+    /* Sample case picker — styled differently */
+    .sample-picker-wrap {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      margin-bottom: 14px;
+    }
+
+    .sample-picker-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+      display: block;
+      text-transform: uppercase;
+    }
+
+    .sample-picker-note {
+      font-size: 11px;
+      color: var(--amber);
+      margin-top: 6px;
+      padding: 4px 8px;
+      background: var(--amber-light);
+      border-radius: var(--radius);
+      border-left: 2px solid var(--amber-border);
+    }
+
+    /* Payer selector */
+    .payer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .payer-btn {
+      padding: 6px 8px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-family: var(--font-ui);
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .payer-btn:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+    }
+
+    .payer-btn.selected {
+      border-color: var(--teal);
+      background: var(--teal-light);
+      color: var(--teal);
+      font-weight: 600;
+    }
+
+    /* Submit button */
+    .btn-submit {
+      width: 100%;
+      padding: 10px 16px;
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: #0a5a4e;
+    }
+
+    .btn-submit:disabled {
+      background: var(--border-strong);
+      cursor: not-allowed;
+    }
+
+    .btn-submit .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── RIGHT PANEL ─────────────────────────────────────────── */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Tabs */
+    .tab-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+      padding: 0 24px;
+      gap: 0;
+    }
+
+    .tab {
+      padding: 14px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: -1px;
+    }
+
+    .tab:hover {
+      color: var(--text-secondary);
+    }
+
+    .tab.active {
+      color: var(--teal);
+      border-bottom-color: var(--teal);
+    }
+
+    .tab-badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 9999px;
+      color: var(--text-muted);
+    }
+
+    .tab.active .tab-badge {
+      background: var(--teal-light);
+      border-color: var(--teal-mid);
+      color: var(--teal);
+    }
+
+    /* Tab content */
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 400px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      max-width: 280px;
+      line-height: 1.6;
+    }
+
+    /* ── ANALYSIS TAB ────────────────────────────────────────── */
+
+    /* Score display */
+    .score-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 20px;
+      align-items: center;
+      padding: 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+    }
+
+    .score-circle {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 3px solid var(--teal);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .score-number {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--teal);
+      line-height: 1;
+    }
+
+    .score-denom {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .score-meta h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .score-meta p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .readiness-bar-wrap {
+      margin-top: 8px;
+    }
+
+    .readiness-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .readiness-bar {
+      height: 6px;
+      background: var(--surface-3);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .readiness-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--teal);
+      transition: width 0.8s ease;
+    }
+
+    .recommendation-pill {
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      align-self: flex-start;
+    }
+
+    .pill-approve {
+      background: var(--green-light);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+    }
+
+    .pill-likely {
+      background: var(--teal-light);
+      color: var(--teal);
+      border: 1px solid var(--teal-mid);
+    }
+
+    .pill-needs {
+      background: var(--amber-light);
+      color: var(--amber);
+      border: 1px solid var(--amber-border);
+    }
+
+    .pill-deny {
+      background: var(--red-light);
+      color: var(--red);
+      border: 1px solid var(--red-border);
+    }
+
+    /* Urgency banner */
+    .urgency-banner {
+      background: #fff8e8;
+      border: 1px solid var(--amber-border);
+      border-left: 4px solid var(--amber-border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .urgency-banner.show {
+      display: block;
+    }
+
+    .urgency-banner h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--amber);
+      margin-bottom: 3px;
+    }
+
+    .urgency-banner p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Hard stop banner */
+    .hardstop-banner {
+      background: var(--red-light);
+      border: 1px solid var(--red-border);
+      border-left: 4px solid var(--red);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .hardstop-banner.show {
+      display: block;
+    }
+
+    .hardstop-banner h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--red);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hardstop-banner ul {
+      margin-left: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .hardstop-banner ul li {
+      margin-bottom: 2px;
+    }
+
+    /* Two-column criteria grid */
+    .criteria-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .criteria-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .criteria-panel-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .criteria-panel-header.met {
+      color: var(--green);
+      background: var(--green-light);
+    }
+
+    .criteria-panel-header.missing {
+      color: var(--red);
+      background: var(--red-light);
+    }
+
+    .criteria-list {
+      padding: 8px 0;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .criteria-item {
+      padding: 7px 14px;
+      font-size: 12px;
+      line-height: 1.4;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    .criteria-item:last-child {
+      border-bottom: none;
+    }
+
+    .criteria-item-icon {
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .criteria-item.is-missing {
+      color: var(--red);
+    }
+
+    .criteria-item.is-critical {
+      background: #fdf0f0;
+      font-weight: 500;
+    }
+
+    .critical-tag {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      background: var(--red);
+      color: white;
+      padding: 1px 5px;
+      border-radius: 2px;
+      letter-spacing: 0.05em;
+      align-self: flex-start;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    /* Evidence trail */
+    .evidence-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .evidence-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      background: var(--surface-2);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-    }
-    .logo h1 { font-size: 1.5rem; color: #0f766e; }
-    .logo p { font-size: 0.85rem; color: #64748b; }
-
-    /* The Dual Column Grid */
-    .spa-grid {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 2rem;
-      margin-bottom: 4rem;
-    }
-    @media (max-width: 900px) {
-      .spa-grid { grid-template-columns: 1fr; }
     }
 
-    /* Cards */
-    .card {
-      background: white;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
-      padding: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .card-title {
-      font-weight: 600;
-      font-size: 1.25rem;
-      margin-bottom: 1.5rem;
-      color: #1e293b;
+    .evidence-count {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      background: var(--surface-3);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      color: var(--text-muted);
     }
 
-    /* Forms */
-    .form-group { margin-bottom: 1.25rem; }
-    .form-group label {
-      display: block;
-      font-size: 0.875rem;
+    .evidence-item {
+      padding: 8px 14px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      line-height: 1.5;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .evidence-item:last-child {
+      border-bottom: none;
+    }
+
+    .evidence-type {
+      color: var(--blue);
       font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-    .form-control {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      font-size: 1rem;
-      font-family: inherit;
-      transition: border-color 0.2s;
-    }
-    .form-control:focus {
-      outline: none;
-      border-color: #0f766e;
-      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
     }
 
-    /* Buttons */
-    .btn {
-      display: inline-flex;
+    .evidence-item .fhir-ref {
+      color: var(--text-muted);
+    }
+
+    /* Clinical summary */
+    .clinical-summary {
+      background: var(--blue-light);
+      border: 1px solid #b8cceb;
+      border-left: 3px solid var(--blue);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .clinical-summary-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    /* Step therapy */
+    .step-therapy {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .step-therapy-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .step-therapy-row:last-child {
+      border-bottom: none;
+    }
+
+    .step-status {
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* ── LETTER TAB ──────────────────────────────────────────── */
+    .letter-disclaimer {
+      background: var(--amber-light);
+      border: 1px solid var(--amber-border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .disclaimer-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .disclaimer-text h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--amber);
+      margin-bottom: 2px;
+    }
+
+    .disclaimer-text p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .letter-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 32px 40px;
+      font-family: var(--font-letter);
+      font-size: 13.5px;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      max-height: 520px;
+      overflow-y: auto;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .letter-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .btn-action {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: var(--font-ui);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+
+    .btn-action:hover {
+      background: var(--surface-2);
+      border-color: var(--border-strong);
+    }
+
+    .btn-action.primary {
+      background: var(--teal);
+      color: white;
+      border-color: var(--teal);
+    }
+
+    .btn-action.primary:hover {
+      background: #0a5a4e;
+    }
+
+    /* Verifier */
+    .verifier-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .verifier-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .verifier-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+
+    .risk-badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .risk-low {
+      background: var(--green-light);
+      color: var(--green);
+    }
+
+    .risk-med {
+      background: var(--amber-light);
+      color: var(--amber);
+    }
+
+    .risk-high {
+      background: var(--red-light);
+      color: var(--red);
+    }
+
+    /* ── REVIEW TAB ──────────────────────────────────────────── */
+    .review-checklist {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .review-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .review-item:last-child {
+      border-bottom: none;
+    }
+
+    .review-checkbox {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      border: 1.5px solid var(--border-strong);
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 2px;
+      appearance: none;
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s;
-      font-family: inherit;
-      font-size: 1rem;
+      position: relative;
+      transition: all 0.15s;
     }
-    .btn-primary:active { transform: scale(0.98); }
-    
-    .btn-outline { background: white; border: 1px solid #cbd5e1; color: #334155; }
-    .btn-outline:hover { background: #f1f5f9; border-color: #94a3b8; }
-    .btn-outline:active { transform: scale(0.98); }
 
-    /* Results Header / Badges */
-    .results-header {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1.5rem;
-      border-bottom: 1px solid #e2e8f0;
+    .review-checkbox:checked {
+      background: var(--teal);
+      border-color: var(--teal);
     }
-    .badge {
-      padding: 0.25rem 0.75rem;
-      border-radius: 9999px;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    .badge-approve { background: #dcfce7; color: #166534; }
-    .badge-deny { background: #fee2e2; color: #991b1b; }
-    .badge-urgency { background: #fef08a; color: #854d0e; border: 1px solid #facc15; }
 
-    /* Letter Box */
-    .letter-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 1.5rem;
-      white-space: pre-wrap;
-      max-height: 400px;
-      overflow-y: auto;
-      font-size: 0.95rem;
+    .review-checkbox:checked::after {
+      content: '✓';
+      color: white;
+      font-size: 10px;
+      position: absolute;
+    }
+
+    .review-item-text h4 {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .review-item-text p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .attestation-block {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .attestation-block h4 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .attestation-block p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
       line-height: 1.6;
-      font-family: 'Times New Roman', Times, serif; /* Professional letter feel */
     }
 
-    /* Lists */
-    .evidence-list, .missing-list {
-      margin-left: 1.5rem;
-      margin-bottom: 1.5rem;
-      font-size: 0.9rem;
-      color: #334155;
+    .clinician-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
     }
-    .evidence-list li { margin-bottom: 0.5rem; }
-    
-    /* Spinner */
-    .spinner {
-      display: none;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,0.2);
-      border-radius: 50%;
-      border-top-color: #ffffff;
-      border-right-color: #ffffff;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Modern Alert Styles */
-    .alert-error {
-      margin-top: 1rem;
-      color: #991b1b;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      padding: 1rem;
-      border-radius: 8px;
-      font-size: 0.875rem;
+    .btn-approve-final {
+      width: 100%;
+      padding: 12px;
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      transition: background 0.15s;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-    }
-    .alert-error::before { content: '⚠️'; font-size: 1.1rem; }
-
-    /* Hidden states */
-    .hidden { display: none !important; }
-    
-    /* Links */
-    .dashboard-link {
-        color: #0f766e;
-        font-weight: 500;
-        text-decoration: underline;
-        font-size: 0.9rem;
+      justify-content: center;
+      gap: 8px;
     }
 
+    .btn-approve-final:disabled {
+      background: var(--border-strong);
+      cursor: not-allowed;
+    }
+
+    .btn-approve-final:not(:disabled):hover {
+      background: #0a5a4e;
+    }
+
+    .btn-flag {
+      width: 100%;
+      padding: 10px;
+      background: var(--surface);
+      color: var(--amber);
+      border: 1px solid var(--amber-border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s;
+    }
+
+    .btn-flag:hover {
+      background: var(--amber-light);
+    }
+
+    /* ── AUDIT TAB ───────────────────────────────────────────── */
+    .audit-log {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .audit-entry {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .audit-entry:last-child {
+      border-bottom: none;
+    }
+
+    .audit-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      min-width: 64px;
+      padding-top: 1px;
+    }
+
+    .audit-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border-strong);
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .audit-dot.system {
+      background: var(--teal);
+    }
+
+    .audit-dot.human {
+      background: var(--blue);
+    }
+
+    .audit-dot.warn {
+      background: var(--amber-border);
+    }
+
+    .audit-dot.error {
+      background: var(--red-border);
+    }
+
+    .audit-body {
+      flex: 1;
+    }
+
+    .audit-body h5 {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .audit-body p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .audit-actor {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 1px 6px;
+      border-radius: 2px;
+      margin-left: 6px;
+      background: var(--surface-2);
+      color: var(--text-muted);
+    }
+
+    /* ── PATIENT SUMMARY TAB ─────────────────────────────────── */
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .summary-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 11px;
+    }
+
+    .summary-card p {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-primary);
+    }
+
+    .summary-card .next-step {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: var(--teal-light);
+      border-left: 3px solid var(--teal);
+      border-radius: var(--radius);
+      font-size: 13px;
+      color: var(--teal);
+      font-weight: 500;
+    }
+
+    /* ── APPEAL TRIGGER ──────────────────────────────────────── */
+    .appeal-trigger {
+      background: var(--red-light);
+      border: 1px solid var(--red-border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .appeal-trigger.show {
+      display: block;
+    }
+
+    .appeal-trigger h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--red);
+      margin-bottom: 6px;
+    }
+
+    .appeal-trigger p {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    .btn-appeal {
+      padding: 8px 16px;
+      background: var(--red);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-ui);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+
+    .btn-appeal:hover {
+      background: #6b1414;
+    }
+
+    .denial-input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--red-border);
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-family: var(--font-ui);
+      margin-bottom: 8px;
+    }
+
+    .denial-input:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+
+    /* ── MISC ────────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flex-1 {
+      flex: 1;
+    }
+
+    .loading-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 32px 0;
+    }
+
+    .loading-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .loading-step.active {
+      color: var(--teal);
+      font-weight: 500;
+    }
+
+    .loading-step .lspinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(13, 107, 94, 0.2);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .loading-step .ldone {
+      color: var(--green);
+      font-size: 14px;
+    }
+
+    .error-msg {
+      background: var(--red-light);
+      border: 1px solid var(--red-border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--red);
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 14px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--surface);
+      font-family: var(--font-mono);
+    }
+
+    footer a {
+      color: var(--teal);
+      text-decoration: none;
+    }
+
+    @media (max-width: 900px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+
+      .left-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .criteria-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .clinician-fields {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
+
 <body>
 
-<div class="container">
-  <!-- Header -->
-  <header class="header">
-    <div class="logo">
-      <h1>AuthBridge <span style="font-size: 0.5em; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; color: #475569; position: relative; top: -3px;">SPA</span></h1>
-      <p>Prior Authorization Intelligence API Endpoint</p>
+  <!-- System bar -->
+  <div class="sysbar">
+    <div class="sysbar-left">
+      <span><span class="sysbar-dot"></span>System operational</span>
+      <span>MCP/SSE · FHIR R4 · A2A</span>
+      <span class="env-tag">SYNTHETIC DATA</span>
     </div>
     <div>
-        <a href="/dashboard" class="dashboard-link">View Savings Dashboard</a>
-    </div>
-  </header>
-
-  <div class="spa-grid">
-    <!-- Left Column: Inputs -->
-    <div class="card">
-      <h2 class="card-title">New Request</h2>
-      
-      <form id="paForm" onsubmit="event.preventDefault(); runPA();">
-        <div class="form-group">
-          <label style="color: #0f766e; font-weight: 700;">🚀 Quick Demo Case</label>
-          <select id="scenarioPicker" class="form-control" style="background: #f0fdfa; border-color: #99f6e4;" onchange="applyScenario()">
-            <option value="custom">-- Choose a test patient --</option>
-            <option value="crohns" selected>Sarah Thompson (Crohn's Disease)</option>
-            <option value="nsclc">Robert Chen (Lung Cancer - URGENT)</option>
-            <option value="endo">Maya Patel (Endometriosis)</option>
-            <option value="t2dm">Marcus Johnson (Diabetes)</option>
-          </select>
-        </div>
-
-        <div class="form-group" style="border-top: 1px dashed #e2e8f0; padding-top: 1.25rem;">
-          <label for="patientId">Patient ID <span style="color:#ef4444">*</span></label>
-          <input type="text" id="patientId" class="form-control" value="synthetic-crohns-001" placeholder="e.g. synthetic-crohns-001" required aria-label="Patient ID" autocomplete="off" />
-        </div>
-
-        <div class="form-group">
-          <label for="drugName">Requested Drug <span style="color:#ef4444">*</span></label>
-          <select id="drugName" class="form-control" required aria-label="Drug Name">
-            <option value="" disabled>Select from database...</option>
-            <option value="Humira" selected>Adalimumab (Humira)</option>
-            <option value="Keytruda">Pembrolizumab (Keytruda)</option>
-            <option value="Ozempic">Semaglutide (Ozempic/Wegovy)</option>
-            <option value="Orilissa">Elagolix (Orilissa)</option>
-            <option value="Stelara">Ustekinumab (Stelara)</option>
-            <option value="Skyrizi">Risankizumab (Skyrizi)</option>
-            <option value="Dupixent">Dupilumab (Dupixent)</option>
-            <option value="Rinvoq">Upadacitinib (Rinvoq)</option>
-            <option value="Otezla">Apremilast (Otezla)</option>
-            <option value="Entresto">Sacubitril/Valsartan (Entresto)</option>
-          </select>
-        </div>
-
-        <button type="submit" id="submitBtn" class="btn btn-primary" aria-label="Run Prior Authorization">
-          <span id="btnText">Run PA Automation</span>
-          <div class="spinner" id="btnSpinner"></div>
-        </button>
-      </form>
-      
-      <div id="errorAlert" class="hidden alert-error" style="margin-top: 1rem;"></div>
-    </div>
-
-    <!-- Right Column: Results -->
-    <div class="card" id="resultsCard" style="opacity: 0.5; pointer-events: none;">
-      <h2 class="card-title">Clinical Output</h2>
-      
-      <div id="resultsContent" class="hidden fade-in">
-        
-        <div class="results-header">
-          <div style="font-size: 1.5rem; font-weight: 800; color: #0f172a;" id="resScore">--/100</div>
-          <div id="resBadge" class="badge">--</div>
-          <div id="resUrgency" class="badge badge-urgency hidden">🚨 CMS-0057-F URGENT</div>
-          <div style="flex-grow: 1;"></div>
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-outline" onclick="copyLetter()" id="copyBtn" aria-label="Copy Letter to Clipboard">📋 Copy Letter</button>
-            <button class="btn btn-outline" onclick="downloadPDF()" aria-label="Download Letter as PDF">📄 Print PDF</button>
-          </div>
-        </div>
-
-        <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #475569; text-transform: uppercase;">Generated PA Letter</h3>
-        <div class="letter-box" id="resLetter" tabindex="0" aria-label="Generated Prior Authorization Letter"></div>
-
-        <div style="margin-top: 1.5rem;">
-          <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #475569; text-transform: uppercase;">Patient Facing Summary</h3>
-          <div style="padding: 1rem; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; font-size: 0.9rem; margin-bottom: 1.5rem;" id="resSummary"></div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
-            <div>
-                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #475569; text-transform: uppercase;">FHIR Evidence Trail</h3>
-                <ul class="evidence-list" id="resEvidence"></ul>
-            </div>
-            <div>
-                <h3 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: #475569; text-transform: uppercase;">Missing Criteria</h3>
-                <ul class="missing-list" id="resMissing" style="color: #b91c1c;"></ul>
-            </div>
-        </div>
-
-      </div>
-      
-      <div id="emptyState" style="text-align: center; color: #94a3b8; padding: 4rem 0;">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">🗂️</div>
-        <p>Awaiting request payload...<br/>Select a patient and drug to simulate the workflow.</p>
-      </div>
+      <a href="/dashboard">Savings dashboard</a>
+      &nbsp;·&nbsp;
+      <a href="/health">Health</a>
     </div>
   </div>
 
-  <!-- Messy Data Demo Section -->
-    <div id="messyDemo" class="demo-section" style="display: none;">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">🌪 Messy Data Demo</h3>
-          <p>Shows how AuthBridge handles uncertain or incomplete real-world data</p>
-        </div>
-        <div class="card-content">
-          <div id="messyResults"></div>
-        </div>
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-mark">🔐</div>
+      <div class="logo-text">
+        <h1>AuthBridge</h1>
+        <p>Prior Authorization Clinical Intelligence System</p>
       </div>
     </div>
+    <nav class="header-nav">
+      <a href="/dashboard" class="nav-link">Dashboard</a>
+      <a href="https://github.com/tazwaryayyyy/AuthBridge" target="_blank" class="nav-link">GitHub</a>
+    </nav>
+  </header>
 
-</div>
+  <!-- Main layout -->
+  <div class="main">
 
-<script>
-  let startTime;
-  
-  async function runPA() {
-    const pid = document.getElementById('patientId').value.trim();
-    const drug = document.getElementById('drugName').value;
-    const btn = document.getElementById('submitBtn');
-    const spinner = document.getElementById('btnSpinner');
-    const err = document.getElementById('errorAlert');
-    
-    // Reset UI state
-    document.getElementById('emptyState').classList.add('hidden');
-    document.getElementById('resultsContent').classList.add('hidden');
-    
-    // Show loading state
-    btn.disabled = true;
-    btn.textContent = '⏳ Running...';
-    
-    startTime = Date.now();
-    
-    document.getElementById('emptyState').innerHTML = '<div class="spinner" style="display:block; margin: 0 auto 1.5rem; border-color: #cbd5e1; border-top-color: #0f766e; border-right-color: #0f766e; width: 40px; height: 40px;"></div><p style="font-weight: 500; font-size: 1.1rem; color: #0f766e;">Fetching FHIR context...</p><p style="font-size: 0.875rem; color: #64748b; margin-top: 0.5rem;">Authenticating with payer clinical engine</p>';
+    <!-- ── LEFT PANEL ─────────────────────────────────── -->
+    <aside class="left-panel">
 
-    try {
-      const resp = await fetch('/api/run-pa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patient_id: pid, drug_name: drug })
-      });
-      
-      const data = await resp.json();
-      
-      if(!resp.ok) {
-        throw new Error(data.error || `HTTP error ${resp.status}`);
-      }
-      
-      populateResults(data, startTime);
-      
-      document.getElementById('emptyState').classList.add('hidden');
-      document.getElementById('resultsContent').classList.remove('hidden');
-      
-    } catch (e) {
-      err.textContent = e.message;
-      err.classList.remove('hidden');
-      document.getElementById('emptyState').innerHTML = '<div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div><p style="font-weight: 600;">Automation Interrupted</p><p style="color:#64748b; font-size: 0.9rem; margin-top: 0.5rem;">Check Patient ID or Payer Criteria Availability</p>';
-    } finally {
-      btn.disabled = false;
-      document.getElementById('btnText').textContent = "Run PA Automation";
-      spinner.style.display = 'none';
-      setTimeout(() => { document.getElementById('copyBtn').textContent = "📋 Copy Letter"; }, 2000);
-    }
-  }
+      <!-- Workflow stages -->
+      <div class="panel-section">
+        <div class="section-label">Workflow</div>
+        <div class="workflow-stages" id="workflowStages">
+          <div class="stage active" id="stage-1">
+            <div class="stage-num"><span>1</span></div>Request
+          </div>
+          <div class="stage" id="stage-2">
+            <div class="stage-num"><span>2</span></div>Analysis
+          </div>
+          <div class="stage" id="stage-3">
+            <div class="stage-num"><span>3</span></div>Clinician Review
+          </div>
+          <div class="stage" id="stage-4">
+            <div class="stage-num"><span>4</span></div>Submission
+          </div>
+        </div>
+      </div>
 
-  function applyScenario() {
-    const val = document.getElementById('scenarioPicker').value;
-    const pid = document.getElementById('patientId');
-    const drug = document.getElementById('drugName');
-    
-    if (val === 'crohns') {
-      pid.value = 'synthetic-crohns-001';
-      drug.value = 'Humira';
-    } else if (val === 'nsclc') {
-      pid.value = 'synthetic-nsclc-003';
-      drug.value = 'Keytruda';
-    } else if (val === 'endo') {
-      pid.value = 'synthetic-endo-004';
-      drug.value = 'Orilissa';
-    } else if (val === 't2dm') {
-      pid.value = 'synthetic-t2dm-002';
-      drug.value = 'Ozempic';
-    }
-  }
+      <!-- Sample cases -->
+      <div class="panel-section">
+        <div class="sample-picker-wrap">
+          <span class="sample-picker-label">Load Sample Case (for testing only)</span>
+          <select id="scenarioPicker" class="input" onchange="applyScenario()">
+            <option value="">— Select test scenario —</option>
+            <option value="crohns">Sarah Thompson · Crohn's Disease (Humira)</option>
+            <option value="nsclc">Robert Chen · Lung Cancer — URGENT (Keytruda)</option>
+            <option value="endo">Maya Patel · Endometriosis (Orilissa)</option>
+            <option value="t2dm">Marcus Johnson · Type 2 Diabetes (Ozempic)</option>
+          </select>
+          <p class="sample-picker-note">⚠ Synthetic data only. Not for clinical use.</p>
+        </div>
+      </div>
 
-  function populateResults(data) {
-    document.getElementById('resScore').textContent = `${data.score}/100`;
-    
-    const badge = document.getElementById('resBadge');
-    if(data.recommendation.toUpperCase() === 'APPROVE') {
-      badge.textContent = '✅ APPROVE';
-      badge.className = 'badge badge-approve';
-    } else {
-      badge.textContent = `❌ ${data.recommendation.toUpperCase()}`;
-      badge.className = 'badge badge-deny';
-    }
-    
-    const urgency = document.getElementById('resUrgency');
-    if(data.urgency && data.urgency.is_urgent) {
-      urgency.classList.remove('hidden');
-    } else {
-      urgency.classList.add('hidden');
-    }
-    
-    document.getElementById('resLetter').textContent = data.letter || "No letter generated.";
-    document.getElementById('resSummary').textContent = data.patient_summary || "No patient summary available.";
-    
-    const evList = document.getElementById('resEvidence');
-    evList.innerHTML = '';
-    (data.evidence_trail || []).forEach(item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      evList.appendChild(li);
-    });
-    if(evList.children.length === 0) evList.innerHTML = "<li>No direct evidence citations found.</li>";
-    
-    const missList = document.getElementById('resMissing');
-    missList.innerHTML = '';
-    (data.missing_criteria || []).forEach(item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      missList.appendChild(li);
-    });
-    if(missList.children.length === 0) missList.innerHTML = "<li style='color:#166534;'>All criteria met.</li>";
-  }
+      <!-- Patient form -->
+      <div class="panel-section">
+        <div class="section-label">Patient & Request</div>
+        <div class="field">
+          <label>Patient ID <span class="required">*</span></label>
+          <input type="text" id="patientId" class="input" placeholder="e.g. synthetic-crohns-001" autocomplete="off" />
+          <p class="field-note">FHIR patient resource ID</p>
+        </div>
+        <div class="field">
+          <label>Requested Drug <span class="required">*</span></label>
+          <select id="drugName" class="input">
+            <option value="">Select drug...</option>
+            <optgroup label="Biologics — GI">
+              <option value="Humira">Adalimumab (Humira)</option>
+              <option value="Stelara">Ustekinumab (Stelara)</option>
+              <option value="Xeljanz">Tofacitinib (Xeljanz)</option>
+            </optgroup>
+            <optgroup label="Oncology">
+              <option value="Keytruda">Pembrolizumab (Keytruda)</option>
+            </optgroup>
+            <optgroup label="Endocrinology">
+              <option value="Ozempic">Semaglutide (Ozempic/Wegovy)</option>
+              <option value="Farxiga">Dapagliflozin (Farxiga)</option>
+            </optgroup>
+            <optgroup label="Women's Health">
+              <option value="Orilissa">Elagolix (Orilissa)</option>
+            </optgroup>
+            <optgroup label="Dermatology">
+              <option value="Dupixent">Dupilumab (Dupixent)</option>
+              <option value="Skyrizi">Risankizumab (Skyrizi)</option>
+              <option value="Otezla">Apremilast (Otezla)</option>
+            </optgroup>
+            <optgroup label="Rheumatology">
+              <option value="Rinvoq">Upadacitinib (Rinvoq)</option>
+              <option value="Cosentyx">Secukinumab (Cosentyx)</option>
+            </optgroup>
+            <optgroup label="Cardiology">
+              <option value="Entresto">Sacubitril/Valsartan (Entresto)</option>
+              <option value="Xarelto">Rivaroxaban (Xarelto)</option>
+            </optgroup>
+            <optgroup label="Neurology">
+              <option value="Tysabri">Natalizumab (Tysabri)</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
 
-  async function copyLetter() {
-    const text = document.getElementById('resLetter').textContent;
-    try {
-      await navigator.clipboard.writeText(text);
-      const btn = document.getElementById('copyBtn');
-      btn.textContent = "✅ Copied!";
-      setTimeout(() => { btn.textContent = "📋 Copy Letter"; }, 2000);
-    } catch (err) {
-      alert("Failed to copy text.");
-    }
-  }
+      <!-- Payer selection -->
+      <div class="panel-section">
+        <div class="section-label">Payer</div>
+        <div class="payer-grid">
+          <button class="payer-btn selected" onclick="selectPayer(this,'UnitedHealthcare')">UnitedHealthcare</button>
+          <button class="payer-btn" onclick="selectPayer(this,'Aetna')">Aetna</button>
+          <button class="payer-btn" onclick="selectPayer(this,'BCBS')">BCBS</button>
+          <button class="payer-btn" onclick="selectPayer(this,'Cigna')">Cigna</button>
+          <button class="payer-btn" onclick="selectPayer(this,'Medicare')">Medicare Adv.</button>
+          <button class="payer-btn" onclick="selectPayer(this,'Humana')">Humana</button>
+        </div>
+        <input type="hidden" id="selectedPayer" value="UnitedHealthcare">
+        <p class="field-note" style="margin-top:8px;">Payer-specific criteria weighting applied.</p>
+      </div>
 
-  function downloadPDF() {
-    const letterContent = document.getElementById('resLetter').innerHTML.replace(/\n/g, '<br>');
-    const printWindow = window.open('', '_blank', 'height=600,width=800');
-    printWindow.document.write('<html><head><title>PA Justification Letter</title>');
-    printWindow.document.write('<style>body { font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 1.5; padding: 40px; } </style>');
-    printWindow.document.write('</head><body >');
-    printWindow.document.write(letterContent);
-    printWindow.document.write('</body></html>');
-    printWindow.document.close();
-    printWindow.focus();
-    
-    // Slight delay to ensure contents render before printing
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 1000); // Increased delay from 500 to 1000
-  }
-  <footer style="text-align: center; padding: 2rem; border-top: 1px solid #e2e8f0; margin-top: 2rem; color: #64748b; font-size: 0.875rem;">
-    <p>Created by <a href="https://x.com/TazwarEnan" target="_blank" style="color: #0f766e; text-decoration: none;">Tazwar Ahnnaf Enan</a> | <a href="https://x.com/TazwarEnan" target="_blank" style="color: #0f766e; text-decoration: none;">X (Twitter)</a></p>
+      <!-- Submit -->
+      <div class="panel-section" style="margin-top:auto;">
+        <button class="btn-submit" id="submitBtn" onclick="runPA()">
+          <span id="btnText">Run PA Analysis</span>
+          <div class="spinner" id="btnSpinner"></div>
+        </button>
+        <div class="error-msg" id="errorMsg"></div>
+      </div>
+
+    </aside>
+
+    <!-- ── RIGHT PANEL ────────────────────────────────── -->
+    <div class="right-panel">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <div class="tab active" onclick="switchTab('analysis')" id="tab-analysis">
+          Analysis <span class="tab-badge" id="badge-analysis">—</span>
+        </div>
+        <div class="tab" onclick="switchTab('letter')" id="tab-letter">
+          PA Letter <span class="tab-badge" id="badge-letter">—</span>
+        </div>
+        <div class="tab" onclick="switchTab('review')" id="tab-review">
+          Clinician Review <span class="tab-badge" id="badge-review">—</span>
+        </div>
+        <div class="tab" onclick="switchTab('summary')" id="tab-summary">
+          Patient Summary <span class="tab-badge" id="badge-summary">—</span>
+        </div>
+        <div class="tab" onclick="switchTab('audit')" id="tab-audit">
+          Audit Log <span class="tab-badge" id="badge-audit">0</span>
+        </div>
+      </div>
+
+      <!-- ── Analysis Tab ── -->
+      <div class="tab-content active" id="content-analysis">
+        <div id="analysis-empty" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <h3>No analysis yet</h3>
+          <p>Select a patient and drug, then click Run PA Analysis to begin the automated workflow.</p>
+        </div>
+        <div id="analysis-loading" style="display:none">
+          <div class="loading-steps">
+            <div class="loading-step active" id="ls-1">
+              <div class="lspinner"></div>Fetching FHIR clinical record...
+            </div>
+            <div class="loading-step" id="ls-2">2. Looking up payer criteria</div>
+            <div class="loading-step" id="ls-3">3. Scoring clinical evidence match</div>
+            <div class="loading-step" id="ls-4">4. Detecting urgency (CMS-0057-F)</div>
+            <div class="loading-step" id="ls-5">5. Building FHIR evidence trail</div>
+          </div>
+        </div>
+        <div id="analysis-results" style="display:none">
+          <!-- Urgency -->
+          <div class="urgency-banner" id="urgencyBanner">
+            <h4>🚨 CMS-0057-F Expedited Review Required</h4>
+            <p id="urgencyReason"></p>
+            <p style="margin-top:4px;font-size:11px;font-family:var(--font-mono);color:var(--amber)">Payer must respond
+              within 72 hours per federal mandate.</p>
+          </div>
+          <!-- Hard stop -->
+          <div class="hardstop-banner" id="hardstopBanner">
+            <h4>⛔ Submission Blocked — Critical Documentation Missing</h4>
+            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">The following CRITICAL criteria
+              have no evidence in the FHIR record. Submission is blocked until resolved.</p>
+            <ul id="hardstopList"></ul>
+            <p style="font-size:11px;color:var(--text-muted);margin-top:8px;">Obtain required documentation, update the
+              patient record, and rerun the analysis.</p>
+          </div>
+          <!-- Score -->
+          <div class="score-row">
+            <div class="score-circle" id="scoreCircle">
+              <div class="score-number" id="scoreNum">—</div>
+              <div class="score-denom">/100</div>
+            </div>
+            <div class="score-meta">
+              <h2 id="scoreLabel">—</h2>
+              <p id="scoreSubtitle">—</p>
+              <div class="readiness-bar-wrap">
+                <div class="readiness-bar-label">
+                  <span>PA Readiness</span>
+                  <span id="readinessLabel">—</span>
+                </div>
+                <div class="readiness-bar">
+                  <div class="readiness-fill" id="readinessFill" style="width:0%"></div>
+                </div>
+              </div>
+            </div>
+            <div id="recommendationPill" class="recommendation-pill">—</div>
+          </div>
+          <!-- Clinical summary -->
+          <div class="clinical-summary">
+            <div class="clinical-summary-label">Clinical Reasoning</div>
+            <span id="clinicalSummaryText">—</span>
+          </div>
+          <!-- Criteria grid -->
+          <div class="criteria-grid">
+            <div class="criteria-panel">
+              <div class="criteria-panel-header met">✓ Criteria Met <span id="metCount"
+                  style="margin-left:auto;font-size:10px;font-family:var(--font-mono)"></span></div>
+              <div class="criteria-list" id="criteriaMetList"></div>
+            </div>
+            <div class="criteria-panel">
+              <div class="criteria-panel-header missing">✗ Missing / Incomplete <span id="missingCount"
+                  style="margin-left:auto;font-size:10px;font-family:var(--font-mono)"></span></div>
+              <div class="criteria-list" id="criteriaMissingList"></div>
+            </div>
+          </div>
+          <!-- Step therapy -->
+          <div class="step-therapy">
+            <div class="evidence-header">Step Therapy Documentation</div>
+            <div id="stepTherapyList"></div>
+          </div>
+          <!-- Evidence trail -->
+          <div class="evidence-section">
+            <div class="evidence-header">
+              FHIR Evidence Trail
+              <span class="evidence-count" id="evidenceCount">0 resources</span>
+            </div>
+            <div id="evidenceList"></div>
+          </div>
+          <!-- Appeal trigger (shows on denial) -->
+          <div class="appeal-trigger" id="appealTrigger">
+            <h4>PA Likely to Be Denied</h4>
+            <p>Based on the clinical match score and missing criteria, this request has a high denial risk. You can
+              pre-generate an appeal letter now.</p>
+            <input type="text" class="denial-input" id="denialReasonInput"
+              placeholder="Enter expected denial reason (optional)..." />
+            <button class="btn-appeal" onclick="runAppeal()">⚖ Generate Appeal Letter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Letter Tab ── -->
+      <div class="tab-content" id="content-letter">
+        <div class="empty-state" id="letter-empty">
+          <div class="empty-icon">📄</div>
+          <h3>No letter generated</h3>
+          <p>Run the PA analysis first to generate the clinical justification letter.</p>
+        </div>
+        <div id="letter-results" style="display:none">
+          <div class="letter-disclaimer">
+            <div class="disclaimer-icon">⚠</div>
+            <div class="disclaimer-text">
+              <h4>Draft generated — requires clinician review</h4>
+              <p>This letter was AI-generated based on the patient's FHIR record. Every claim is traceable to a source
+                resource. The prescribing physician must review, verify, and approve before submission.</p>
+            </div>
+          </div>
+          <div class="letter-actions">
+            <button class="btn-action primary" onclick="copyLetter()">📋 Copy to clipboard</button>
+            <button class="btn-action" onclick="downloadPDF()">🖨 Print / PDF</button>
+            <div class="flex-1"></div>
+            <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)"
+              id="letterWordCount"></span>
+          </div>
+          <div class="letter-box" id="letterBox"></div>
+          <!-- Verifier -->
+          <div class="verifier-panel">
+            <div class="verifier-header">
+              <span class="verifier-title">AI Self-Audit — Hallucination Prevention</span>
+              <span class="risk-badge" id="riskBadge">—</span>
+            </div>
+            <div id="verifierBody" style="padding:12px 14px;">
+              <div id="verifiedList"></div>
+              <div id="unverifiedList"></div>
+            </div>
+          </div>
+          <div id="appealLetterSection" style="display:none;margin-top:16px;">
+            <div class="evidence-header"
+              style="background:var(--red-light);color:var(--red);border:1px solid var(--red-border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px;">
+              Appeal Letter (Auto-generated)</div>
+            <div class="letter-box" id="appealLetterBox" style="border-color:var(--red-border)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Review Tab ── -->
+      <div class="tab-content" id="content-review">
+        <div class="empty-state" id="review-empty">
+          <div class="empty-icon">✅</div>
+          <h3>Awaiting analysis</h3>
+          <p>Complete the PA analysis to access the clinician review and approval workflow.</p>
+        </div>
+        <div id="review-results" style="display:none">
+          <div class="letter-disclaimer">
+            <div class="disclaimer-icon">⚕</div>
+            <div class="disclaimer-text">
+              <h4>Clinician review required before submission</h4>
+              <p>Confirm each item below, provide your attestation, then approve the submission. All actions are logged
+                in the audit trail.</p>
+            </div>
+          </div>
+          <div class="review-checklist">
+            <div class="review-item">
+              <input type="checkbox" class="review-checkbox" id="chk1" onchange="updateApproveBtn()">
+              <div class="review-item-text">
+                <h4>Patient clinical record verified</h4>
+                <p>I confirm the FHIR data retrieved accurately reflects this patient's current clinical status.</p>
+              </div>
+            </div>
+            <div class="review-item">
+              <input type="checkbox" class="review-checkbox" id="chk2" onchange="updateApproveBtn()">
+              <div class="review-item-text">
+                <h4>PA criteria match confirmed</h4>
+                <p>I have reviewed the criteria match analysis and the evidence trail. The clinical reasoning is
+                  accurate.</p>
+              </div>
+            </div>
+            <div class="review-item">
+              <input type="checkbox" class="review-checkbox" id="chk3" onchange="updateApproveBtn()">
+              <div class="review-item-text">
+                <h4>Letter content verified</h4>
+                <p>I have read the generated PA letter and confirm all clinical statements are accurate and appropriate.
+                </p>
+              </div>
+            </div>
+            <div class="review-item">
+              <input type="checkbox" class="review-checkbox" id="chk4" onchange="updateApproveBtn()">
+              <div class="review-item-text">
+                <h4>Missing criteria acknowledged</h4>
+                <p>I have reviewed any flagged gaps and accept responsibility for submitting without that documentation,
+                  or confirm it is not applicable.</p>
+              </div>
+            </div>
+            <div class="review-item">
+              <input type="checkbox" class="review-checkbox" id="chk5" onchange="updateApproveBtn()">
+              <div class="review-item-text">
+                <h4>No PHI violations — synthetic data only</h4>
+                <p>I confirm this submission uses synthetic or de-identified patient data in compliance with the
+                  system's data use policy.</p>
+              </div>
+            </div>
+          </div>
+          <div class="attestation-block">
+            <h4>Prescriber Attestation</h4>
+            <p>By approving this submission, you attest that this prior authorization request is medically necessary,
+              clinically appropriate, and that all information provided is accurate to the best of your knowledge.</p>
+            <div class="clinician-fields">
+              <div class="field">
+                <label>Prescriber Name</label>
+                <input type="text" class="input" id="prescriberName" placeholder="Dr. Full Name, MD"
+                  onchange="logAudit('human','Prescriber name entered','CLINICIAN')" />
+              </div>
+              <div class="field">
+                <label>NPI Number</label>
+                <input type="text" class="input" id="prescriberNpi" placeholder="0000000000" />
+              </div>
+            </div>
+            <button class="btn-approve-final" id="approveBtn" disabled onclick="approveSubmission()">
+              ✓ Approve and Submit PA Request
+            </button>
+            <button class="btn-flag" onclick="flagUncertainty()">
+              ⚑ Flag for additional review — do not submit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Patient Summary Tab ── -->
+      <div class="tab-content" id="content-summary">
+        <div class="empty-state" id="summary-empty">
+          <div class="empty-icon">👤</div>
+          <h3>No summary yet</h3>
+          <p>Run the analysis to generate a plain-language summary for the patient portal.</p>
+        </div>
+        <div id="summary-results" style="display:none">
+          <div class="summary-card">
+            <h3>Patient-Facing Summary</h3>
+            <p id="summaryText">—</p>
+            <div class="next-step" id="summaryNextStep">—</div>
+          </div>
+          <div class="summary-card">
+            <h3>Timeline</h3>
+            <p id="summaryTimeline">—</p>
+          </div>
+          <div class="summary-card">
+            <h3>Contact Note</h3>
+            <p style="font-size:13px;color:var(--text-secondary)">Contact your doctor's office if you have questions or
+              if you have not heard back within the expected timeframe. Your physician is available for a peer-to-peer
+              call with the insurance company if needed.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Audit Tab ── -->
+      <div class="tab-content" id="content-audit">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;font-family:var(--font-mono)">
+          All system and clinician actions are recorded below. This log is session-only and not persisted.
+        </p>
+        <div class="audit-log" id="auditLog">
+          <div class="audit-entry">
+            <span class="audit-time" id="auditInitTime">—</span>
+            <div class="audit-dot system"></div>
+            <div class="audit-body">
+              <h5>System initialized <span class="audit-actor">SYSTEM</span></h5>
+              <p>AuthBridge clinical PA system ready. Synthetic data mode.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div><!-- /main -->
+
+  <footer>
+    AuthBridge · Synthetic data only · Not for clinical use ·
+    Built by <a href="https://x.com/TazwarEnan" target="_blank">Tazwar Ahnnaf Enan</a>
   </footer>
+
+  <script>
+    // ── State ────────────────────────────────────────────────
+    let currentData = null;
+    let selectedPayer = 'UnitedHealthcare';
+    let auditEntries = [];
+    let isBlocked = false;
+
+    // ── Init ─────────────────────────────────────────────────
+    document.getElementById('auditInitTime').textContent = nowStr();
+
+    function nowStr() {
+      return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function logAudit(type, title, actor, detail = '') {
+      const entry = { type, title, actor, detail, time: nowStr() };
+      auditEntries.push(entry);
+      const log = document.getElementById('auditLog');
+      const div = document.createElement('div');
+      div.className = 'audit-entry';
+      div.innerHTML = `
+    <span class="audit-time">${entry.time}</span>
+    <div class="audit-dot ${type}"></div>
+    <div class="audit-body">
+      <h5>${entry.title} <span class="audit-actor">${entry.actor}</span></h5>
+      ${detail ? `<p>${detail}</p>` : ''}
+    </div>`;
+      log.appendChild(div);
+      document.getElementById('badge-audit').textContent = auditEntries.length;
+    }
+
+    // ── Tab switching ─────────────────────────────────────────
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + name).classList.add('active');
+      document.getElementById('content-' + name).classList.add('active');
+    }
+
+    // ── Payer selection ───────────────────────────────────────
+    function selectPayer(el, payer) {
+      document.querySelectorAll('.payer-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedPayer = payer;
+      document.getElementById('selectedPayer').value = payer;
+    }
+
+    // ── Scenario picker ───────────────────────────────────────
+    function applyScenario() {
+      const val = document.getElementById('scenarioPicker').value;
+      const pid = document.getElementById('patientId');
+      const drug = document.getElementById('drugName');
+      const map = {
+        crohns: ['synthetic-crohns-001', 'Humira'],
+        nsclc: ['synthetic-nsclc-003', 'Keytruda'],
+        endo: ['synthetic-endo-004', 'Orilissa'],
+        t2dm: ['synthetic-t2dm-002', 'Ozempic']
+      };
+      if (map[val]) { pid.value = map[val][0]; drug.value = map[val][1]; }
+      logAudit('human', `Test scenario loaded: ${val}`, 'USER', 'Synthetic data only — not for clinical use');
+    }
+
+    // ── Loading animation ─────────────────────────────────────
+    function animateLoading() {
+      const steps = [1, 2, 3, 4, 5];
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i > 0) {
+          const prev = document.getElementById('ls-' + steps[i - 1]);
+          prev.classList.remove('active');
+          prev.innerHTML = `<span class="ldone">✓</span> ${prev.textContent.replace(/^[0-9]+\.\s/, '').trim()}`;
+        }
+        if (i < steps.length) {
+          const curr = document.getElementById('ls-' + steps[i]);
+          curr.classList.add('active');
+          curr.innerHTML = `<div class="lspinner"></div>${curr.textContent.trim()}`;
+          i++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 600);
+      return interval;
+    }
+
+    // ── Main PA run ───────────────────────────────────────────
+    async function runPA() {
+      const pid = document.getElementById('patientId').value.trim();
+      const drug = document.getElementById('drugName').value;
+      const errEl = document.getElementById('errorMsg');
+
+      if (!pid || !drug) {
+        errEl.textContent = 'Patient ID and drug are required.';
+        errEl.style.display = 'block';
+        return;
+      }
+      errEl.style.display = 'none';
+
+      // Reset review checkboxes
+      ['chk1', 'chk2', 'chk3', 'chk4', 'chk5'].forEach(id => { document.getElementById(id).checked = false; });
+      updateApproveBtn();
+      isBlocked = false;
+
+      // UI state
+      const btn = document.getElementById('submitBtn');
+      const spinner = document.getElementById('btnSpinner');
+      const btnText = document.getElementById('btnText');
+      btn.disabled = true;
+      spinner.style.display = 'block';
+      btnText.textContent = 'Analyzing...';
+
+      // Reset loading steps
+      for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById('ls-' + i);
+        el.className = 'loading-step';
+        const labels = ['Fetching FHIR clinical record...', 'Looking up payer criteria', 'Scoring clinical evidence match', 'Detecting urgency (CMS-0057-F)', 'Building FHIR evidence trail'];
+        el.innerHTML = `${i}. ${labels[i - 1]}`;
+      }
+
+      // Show loading
+      document.getElementById('analysis-empty').style.display = 'none';
+      document.getElementById('analysis-results').style.display = 'none';
+      document.getElementById('analysis-loading').style.display = 'block';
+      setStage(1);
+
+      const loadInterval = animateLoading();
+      logAudit('system', `PA workflow started: ${drug} for ${pid}`, 'SYSTEM', `Payer: ${selectedPayer}`);
+
+      const t0 = Date.now();
+
+      try {
+        const resp = await fetch('/api/run-pa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patient_id: pid, drug_name: drug, payer: selectedPayer })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+        clearInterval(loadInterval);
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+
+        currentData = data;
+        populateAll(data);
+        setStage(2);
+
+        logAudit('system', `Analysis complete in ${elapsed}s`, 'AUTHBRIDGE',
+          `Score: ${data.score}/100 · ${data.recommendation} · ${data.is_urgent ? 'URGENT' : 'Standard'}`);
+
+        document.getElementById('badge-analysis').textContent = `${data.score}/100`;
+        document.getElementById('badge-letter').textContent = data.letter ? `${(data.letter.split(' ').length)} words` : '—';
+        document.getElementById('badge-review').textContent = 'Ready';
+        document.getElementById('badge-summary').textContent = 'Ready';
+
+      } catch (e) {
+        clearInterval(loadInterval);
+        errEl.textContent = 'Error: ' + e.message;
+        errEl.style.display = 'block';
+        document.getElementById('analysis-loading').style.display = 'none';
+        document.getElementById('analysis-empty').style.display = 'flex';
+        logAudit('error', 'Workflow error', 'SYSTEM', e.message);
+      } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Run PA Analysis';
+      }
+    }
+
+    // ── Populate all panels ───────────────────────────────────
+    function populateAll(data) {
+      populateAnalysis(data);
+      populateLetter(data);
+      populateReview(data);
+      populateSummary(data);
+      document.getElementById('analysis-loading').style.display = 'none';
+      document.getElementById('analysis-results').style.display = 'block';
+      document.getElementById('letter-empty').style.display = 'none';
+      document.getElementById('letter-results').style.display = 'block';
+      document.getElementById('review-empty').style.display = 'none';
+      document.getElementById('review-results').style.display = 'block';
+      document.getElementById('summary-empty').style.display = 'none';
+      document.getElementById('summary-results').style.display = 'block';
+    }
+
+    function populateAnalysis(data) {
+      // Urgency
+      const ub = document.getElementById('urgencyBanner');
+      if (data.is_urgent) {
+        ub.classList.add('show');
+        document.getElementById('urgencyReason').textContent = data.urgency_reason || '';
+      } else { ub.classList.remove('show'); }
+
+      // Score
+      const score = data.score || 0;
+      document.getElementById('scoreNum').textContent = score;
+      document.getElementById('readinessFill').style.width = score + '%';
+
+      const recMap = {
+        'APPROVE': ['Approve', 'pill-approve', 'Strong clinical justification — all criteria met'],
+        'LIKELY_APPROVE': ['Likely Approve', 'pill-likely', 'Most criteria met — minor gaps present'],
+        'NEEDS_MORE_INFO': ['Needs More Info', 'pill-needs', 'Insufficient evidence — additional docs required'],
+        'LIKELY_DENY': ['Likely Deny', 'pill-deny', 'Significant criteria gaps — high denial risk'],
+        'DENY': ['Deny', 'pill-deny', 'Critical criteria not met — submission not recommended']
+      };
+      const rec = recMap[data.recommendation] || ['Unknown', 'pill-needs', ''];
+      document.getElementById('scoreLabel').textContent = rec[0];
+      document.getElementById('scoreSubtitle').textContent = `Confidence: ${data.evidence_strength || '—'} · ${rec[2]}`;
+      document.getElementById('readinessLabel').textContent = score + '%';
+
+      const pill = document.getElementById('recommendationPill');
+      pill.textContent = rec[0];
+      pill.className = 'recommendation-pill ' + rec[1];
+
+      // Clinical summary
+      document.getElementById('clinicalSummaryText').textContent = data.clinical_summary || 'No clinical summary available.';
+
+      // Hard stops — check for CRITICAL missing
+      const missing = data.missing_criteria || [];
+      const missingStr = missing.join(' ').toLowerCase();
+      const criticalKeywords = ['tb', 'tuberculosis', 'hepatitis', 'pregnancy', 'malignancy', 'active infection', 'contraindication'];
+      const criticalMissing = missing.filter(m => criticalKeywords.some(k => m.toLowerCase().includes(k)));
+
+      const hb = document.getElementById('hardstopBanner');
+      const hl = document.getElementById('hardstopList');
+      if (criticalMissing.length > 0 && score < 70) {
+        isBlocked = true;
+        hb.classList.add('show');
+        hl.innerHTML = criticalMissing.map(m => `<li>${m}</li>`).join('');
+      } else { hb.classList.remove('show'); }
+
+      // Criteria met
+      const metList = document.getElementById('criteriaMetList');
+      const matched = data.matched_criteria || [];
+      document.getElementById('metCount').textContent = matched.length;
+      metList.innerHTML = matched.map(c =>
+        `<div class="criteria-item"><span class="criteria-item-icon">✓</span><span>${c}</span></div>`
+      ).join('') || '<div class="criteria-item"><span style="color:var(--text-muted)">None matched</span></div>';
+
+      // Criteria missing
+      const missList = document.getElementById('criteriaMissingList');
+      document.getElementById('missingCount').textContent = missing.length;
+      missList.innerHTML = missing.map(c => {
+        const isCrit = criticalKeywords.some(k => c.toLowerCase().includes(k));
+        return `<div class="criteria-item is-missing ${isCrit ? 'is-critical' : ''}">
+      <span class="criteria-item-icon">✗</span>
+      <span>${c}</span>
+      ${isCrit ? '<span class="critical-tag">CRITICAL</span>' : ''}
+    </div>`;
+      }).join('') || '<div class="criteria-item" style="color:var(--green)">✓ All criteria met</div>';
+
+      // Step therapy
+      const stl = document.getElementById('stepTherapyList');
+      const stepEvidence = data.step_therapy_evidence || [];
+      const stepMissing = data.missing_step_therapy || [];
+      stl.innerHTML = stepEvidence.map(s =>
+        `<div class="step-therapy-row"><span class="step-status">✓</span><span>${s}</span></div>`
+      ).join('');
+      stl.innerHTML += stepMissing.map(s =>
+        `<div class="step-therapy-row" style="color:var(--amber)"><span class="step-status">⚠</span><span>${s} — not documented</span></div>`
+      ).join('');
+      if (!stl.innerHTML) stl.innerHTML = '<div class="step-therapy-row" style="color:var(--text-muted)">No step therapy data available</div>';
+
+      // Evidence trail
+      const evList = document.getElementById('evidenceList');
+      const trail = data.fhir_evidence_trail || [];
+      document.getElementById('evidenceCount').textContent = `${trail.length} resources`;
+      evList.innerHTML = trail.map(t => {
+        const parts = t.split('—');
+        return `<div class="evidence-item"><span class="evidence-type">${(parts[0] || '').trim()}</span> <span class="fhir-ref">—${(parts.slice(1).join('—')) || ''}</span></div>`;
+      }).join('') || '<div class="evidence-item" style="color:var(--text-muted)">No direct evidence citations found</div>';
+
+      // Appeal trigger
+      const at = document.getElementById('appealTrigger');
+      if (['LIKELY_DENY', 'DENY', 'NEEDS_MORE_INFO'].includes(data.recommendation)) {
+        at.classList.add('show');
+      } else { at.classList.remove('show'); }
+    }
+
+    function populateLetter(data) {
+      document.getElementById('letterBox').textContent = data.letter || 'No letter generated.';
+      document.getElementById('letterWordCount').textContent = data.letter ? `${data.letter.split(' ').length} words · ${data.letter.length} chars` : '';
+
+      // Verifier
+      const verify = data.verification || {};
+      const riskEl = document.getElementById('riskBadge');
+      const risk = (verify.hallucination_risk || '—').toUpperCase();
+      riskEl.textContent = risk + (verify.overall_verdict ? ' · ' + verify.overall_verdict : '');
+      riskEl.className = 'risk-badge ' + (risk === 'LOW' ? 'risk-low' : risk === 'MEDIUM' ? 'risk-med' : 'risk-high');
+
+      const vBody = document.getElementById('verifiedList');
+      vBody.innerHTML = (verify.verified_claims || []).map(c =>
+        `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--green)"><span>✓</span><span>${c}</span></div>`
+      ).join('');
+
+      const uvBody = document.getElementById('unverifiedList');
+      uvBody.innerHTML = (verify.unverified_claims || []).map(c =>
+        `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--amber)"><span>⚠</span><span>${c}</span></div>`
+      ).join('');
+    }
+
+    function populateReview(data) {
+      // nothing dynamic needed — checkboxes drive it
+    }
+
+    function populateSummary(data) {
+      document.getElementById('summaryText').textContent = data.patient_summary || 'No patient summary available.';
+      document.getElementById('summaryNextStep').textContent = data.patient_next_step || '';
+      document.getElementById('summaryTimeline').textContent = data.cms_timeline ||
+        (data.is_urgent ? '72-hour expedited review (CMS-0057-F)' : '7 calendar days for standard review');
+    }
+
+    // ── Review & approval ─────────────────────────────────────
+    function updateApproveBtn() {
+      const all = ['chk1', 'chk2', 'chk3', 'chk4', 'chk5'].every(id => document.getElementById(id).checked);
+      const btn = document.getElementById('approveBtn');
+      btn.disabled = !all || isBlocked;
+      if (isBlocked && all) {
+        btn.textContent = '⛔ Blocked — Resolve critical missing criteria first';
+      } else {
+        btn.textContent = '✓ Approve and Submit PA Request';
+      }
+    }
+
+    function approveSubmission() {
+      const name = document.getElementById('prescriberName').value.trim();
+      const npi = document.getElementById('prescriberNpi').value.trim();
+      if (!name) { alert('Please enter prescriber name before approving.'); return; }
+      setStage(4);
+      logAudit('human', 'PA submission approved by clinician', 'CLINICIAN',
+        `Prescriber: ${name}${npi ? ' · NPI: ' + npi : ''}`);
+      document.getElementById('approveBtn').textContent = '✓ Approved — Awaiting payer response';
+      document.getElementById('approveBtn').disabled = true;
+      document.getElementById('approveBtn').style.background = 'var(--green)';
+    }
+
+    function flagUncertainty() {
+      logAudit('warn', 'PA flagged for additional review', 'CLINICIAN', 'Clinician flagged uncertainty — submission held');
+      alert('Flagged. This case has been held for additional review. No submission was made.');
+    }
+
+    // ── Appeal generation ─────────────────────────────────────
+    async function runAppeal() {
+      if (!currentData) return;
+      const denialReason = document.getElementById('denialReasonInput').value.trim()
+        || 'Insufficient documentation of step therapy failure';
+
+      const pid = document.getElementById('patientId').value.trim();
+      const drug = document.getElementById('drugName').value;
+
+      logAudit('system', 'Appeal letter generation started', 'SYSTEM', `Denial reason: ${denialReason}`);
+
+      try {
+        const resp = await fetch('/api/run-pa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patient_id: pid, drug_name: drug, generate_appeal: true, denial_reason: denialReason })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || 'Appeal failed');
+
+        const appealText = data.appeal_letter || data.appeal || 'No appeal generated.';
+        document.getElementById('appealLetterBox').textContent = appealText;
+        document.getElementById('appealLetterSection').style.display = 'block';
+        switchTab('letter');
+        logAudit('system', 'Appeal letter generated', 'AUTHBRIDGE',
+          `${appealText.split(' ').length} words · Peer-to-peer review demanded`);
+      } catch (e) {
+        alert('Appeal generation failed: ' + e.message);
+        logAudit('error', 'Appeal generation failed', 'SYSTEM', e.message);
+      }
+    }
+
+    // ── Stage progression ─────────────────────────────────────
+    function setStage(n) {
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('stage-' + i);
+        el.className = 'stage' + (i < n ? ' done' : i === n ? ' active' : '');
+      }
+    }
+
+    // ── Actions ───────────────────────────────────────────────
+    function copyLetter() {
+      const text = document.getElementById('letterBox').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        logAudit('human', 'PA letter copied to clipboard', 'USER');
+      });
+    }
+
+    function downloadPDF() {
+      const content = document.getElementById('letterBox').textContent.replace(/\n/g, '<br>');
+      const w = window.open('', '_blank', 'height=700,width=800');
+      w.document.write(`<html><head><title>PA Letter</title>
+    <style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.6;padding:48px;max-width:700px;margin:0 auto}</style>
+    </head><body>${content}</body></html>`);
+      w.document.close();
+      setTimeout(() => { w.print(); }, 300);
+      logAudit('human', 'PA letter sent to print/PDF', 'USER');
+    }
+  </script>
 </body>
+
 </html>
