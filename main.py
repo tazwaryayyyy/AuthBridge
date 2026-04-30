@@ -296,7 +296,8 @@ async def run_full_pa_workflow(
     prescriber_npi: Optional[str] = None,
     prescriber_specialty: Optional[str] = None,
     prescriber_phone: Optional[str] = None,
-    practice_name: Optional[str] = None
+    practice_name: Optional[str] = None,
+    payer: Optional[str] = None
 ) -> dict:
     """
     Runs the complete AuthBridge prior authorization workflow in a single call.
@@ -321,7 +322,7 @@ async def run_full_pa_workflow(
     patient_context = await _fetch_patient_context(patient_id)
 
     # Step 2: Criteria
-    pa_criteria = await _lookup_pa_criteria(drug_name)
+    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer)
 
     # Step 3: Score
     match_result = await _score_clinical_match(patient_context, pa_criteria)
@@ -422,7 +423,8 @@ async def run_full_appeal_workflow(
     prescriber_npi: Optional[str] = None,
     prescriber_specialty: Optional[str] = None,
     prescriber_phone: Optional[str] = None,
-    practice_name: Optional[str] = None
+    practice_name: Optional[str] = None,
+    payer: Optional[str] = None
 ) -> dict:
     """
     Runs the complete appeal letter workflow in a single call.
@@ -430,7 +432,7 @@ async def run_full_appeal_workflow(
     """
     _validate_patient_id(patient_id)
     patient_context = await _fetch_patient_context(patient_id)
-    pa_criteria = await _lookup_pa_criteria(drug_name)
+    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer)
     appeal_result = await _draft_appeal_letter(
         drug_name=drug_name,
         denial_reason=denial_reason,
@@ -473,7 +475,8 @@ async def simulate_pa_lifecycle(
     prescriber_specialty: Optional[str] = None,
     prescriber_phone: Optional[str] = None,
     practice_name: Optional[str] = None,
-    denial_reason: Optional[str] = None
+    denial_reason: Optional[str] = None,
+    payer: Optional[str] = None
 ) -> dict:
     """
     Simulates the complete PA lifecycle from submission to final resolution.
@@ -499,7 +502,8 @@ async def simulate_pa_lifecycle(
         prescriber_npi=prescriber_npi,
         prescriber_specialty=prescriber_specialty,
         prescriber_phone=prescriber_phone,
-        practice_name=practice_name
+        practice_name=practice_name,
+        payer=payer
     )
     
     # Day 1: Decision based on scoring
@@ -529,7 +533,8 @@ async def simulate_pa_lifecycle(
                 prescriber_npi=prescriber_npi,
                 prescriber_specialty=prescriber_specialty,
                 prescriber_phone=prescriber_phone,
-                practice_name=practice_name
+                practice_name=practice_name,
+                payer=payer
             )
             
             timeline.append({
@@ -723,7 +728,8 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
                 prescriber_npi=body.get("prescriber_npi"),
                 prescriber_specialty=body.get("prescriber_specialty"),
                 prescriber_phone=body.get("prescriber_phone"),
-                practice_name=body.get("practice_name")
+                practice_name=body.get("practice_name"),
+                payer=body.get("payer")
             )
 
             elapsed_seconds = round(time.time() - t0, 2)
@@ -779,7 +785,8 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
                 prescriber_npi=body.get("prescriber_npi"),
                 prescriber_specialty=body.get("prescriber_specialty"),
                 prescriber_phone=body.get("prescriber_phone"),
-                practice_name=body.get("practice_name")
+                practice_name=body.get("practice_name"),
+                payer=body.get("payer")
             )
             
             return JSONResponse(result)
@@ -806,6 +813,7 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
         prescriber_phone = body.get("prescriber_phone")
         practice_name = body.get("practice_name")
         denial_reason = body.get("denial_reason")
+        payer = body.get("payer")
         
         if not patient_id or not drug_name:
             return JSONResponse({"error": "Missing patient_id or drug_name"}, status_code=400)
@@ -819,7 +827,8 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
                 prescriber_specialty=prescriber_specialty,
                 prescriber_phone=prescriber_phone,
                 practice_name=practice_name,
-                denial_reason=denial_reason
+                denial_reason=denial_reason,
+                payer=payer
             )
             return JSONResponse(result)
         except Exception as e:

@@ -230,7 +230,7 @@ def _trim_patient_context(patient_context: dict, max_meds=5, max_obs=5, max_proc
     return trimmed
 
 
-async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None) -> dict:
+async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None, payer: Optional[str] = None) -> dict:
     criteria_db = _load_criteria()
     match = _fuzzy_match_drug(drug_name, criteria_db)
 
@@ -265,7 +265,11 @@ async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None) -
     logger.info(f"Drug '{drug_name}' not in database — generating via LLM")
     client = get_async_client()
 
+    payer_instruction = f"The criteria must be specific to payer: {payer}." if payer else ""
+    typical_payers_str = f'"{payer}"' if payer else '"Aetna", "BCBS"'
+
     prompt = f"""You are a clinical pharmacist. Generate realistic SYNTHETIC PA criteria for '{drug_name}'.
+{payer_instruction}
 Return ONLY valid JSON:
 {{
   "drug_name": "{drug_name}",
@@ -276,7 +280,7 @@ Return ONLY valid JSON:
   "step_therapy_required": ["<drugs required first>"],
   "supporting_fhir_resources": ["Condition", "Observation"],
   "clinical_guideline": "<relevant guideline>",
-  "typical_payers": ["Aetna", "BCBS"]
+  "typical_payers": [{typical_payers_str}]
 }}"""
 
     try:
@@ -384,10 +388,7 @@ Return ONLY valid JSON:
   "flags": ["<clinical safety flags>"],
   "clinical_summary": "<3 sentence narrative>",
   "evidence_strength": "<STRONG|MODERATE|WEAK>",
-  "recommended_additional_docs": ["<specific requests>"],
-  "urgency": {json.dumps(urgency, indent=2)},
-  "evidence_citations": evidence_citations,
-  "fhir_evidence_trail": format_evidence_trail(evidence_citations)
+  "recommended_additional_docs": ["<specific requests>"]
 }}"""
 
     try:
@@ -434,6 +435,7 @@ async def ingest_payer_policy(policy_text: str, payer_name: str = "Unknown Payer
     and dynamically updates the payer_criteria.json database.
     This demonstrates real-world scalability and dynamic rules engine updates.
     """
+    global _criteria_db
     logger.info(f"Ingesting new payer policy for {payer_name}...")
     
     prompt = f"""You are a clinical pharmacoeconomics specialist. 
@@ -497,13 +499,17 @@ Return ONLY valid JSON in the following format:
                 "indications": [extracted_data]
             }
             
-        # Save back to file
-        with open(criteria_path, "w") as f:
-            json.dump(db, f, indent=2)
-            
-        # Invalidate cache
-        global _criteria_db
-        _criteria_db = db
+        try:
+            # Save back to file
+            with open(criteria_path, "w") as f:
+                json.dump(db, f, indent=2)
+                
+            # Invalidate cache
+            _criteria_db = db
+        except Exception as file_err:
+            logger.warning(f"Could not persist criteria to disk (read-only FS?): {file_err}")
+            # Still update the in-memory cache so it works for this session
+            _criteria_db = db
             
         return {
             "success": True,

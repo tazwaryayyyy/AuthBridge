@@ -161,6 +161,8 @@ Write a 5-paragraph justification letter:
 4. Alignment with {pa_criteria.get('clinical_guideline', 'clinical guidelines')}.
 5. Closing medical necessity and prescriber contact.
 
+CRITICAL: DO NOT invent, hallucinate, or assume any clinical data. You MUST strictly use ONLY the provided FHIR EVIDENCE TRAIL and CLINICAL ANALYSIS. If data is missing, state it is not documented.
+
 No markdown in output. 450-550 words."""
 
     try:

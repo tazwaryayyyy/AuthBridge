@@ -2202,7 +2202,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ patient_id: pid, drug_name: drug, payer: selectedPayer })
         });
-        const data = await resp.json();
+        let data;
+        try {
+          data = await resp.json();
+        } catch (e) {
+          throw new Error(`HTTP ${resp.status}: Server returned an invalid response.`);
+        }
         if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
 
         clearInterval(loadInterval);
@@ -2449,7 +2454,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ patient_id: pid, drug_name: drug, denial_reason: denialReason })
         });
-        const data = await resp.json();
+        let data;
+        try {
+          data = await resp.json();
+        } catch (e) {
+          throw new Error(`HTTP ${resp.status}: Server returned an invalid response.`);
+        }
         if (!resp.ok) throw new Error(data.error || 'Appeal failed');
 
         const appealText = data.appeal_letter || data.appeal || 'No appeal generated.';
