@@ -625,11 +625,11 @@ if __name__ == "__main__":
 
     async def dashboard(request):
         uptime_hours = (time.time() - _metrics["start_time"]) / 3600
-        hours_saved = _metrics["total_pa_letters"] * 13  # 13h average per PA
+        hours_saved = _metrics["total_pa_letters"] * 1  # conservative 1h manual PA baseline per completed workflow
         dollars_saved = hours_saved * 150  # $150/h physician time
         
         baseline_stats = {
-            "avg_manual_pa_hours": 13,
+            "avg_manual_pa_hours": 1,
             "avg_physician_hourly": 150,
             "treatment_abandonment_rate": 0.25,
             "cms_urgent_response_hours": 72
@@ -664,7 +664,7 @@ if __name__ == "__main__":
 <div class="grid">
   <div class="card"><div class="num">{_metrics['total_pa_letters']}</div><div class="label">PA Letters Generated</div></div>
   <div class="card"><div class="num">{_metrics['total_appeals']}</div><div class="label">Appeal Letters Generated</div></div>
-  <div class="card"><div class="num">{_metrics['urgent_cases']}</div><div class="label">Urgent Cases (CMS-0057-F 72h)</div></div>
+  <div class="card"><div class="num">{_metrics['urgent_cases']}</div><div class="label">Urgent Cases Flagged for Expedited Review</div></div>
   <div class="card"><div class="num">{hours_saved:.0f}h</div><div class="label">Estimated Physician Hours Saved</div></div>
   <div class="card"><div class="num">${dollars_saved:,.0f}</div><div class="label">Estimated Administrative Cost Saved</div></div>
   <div class="card"><div class="num">{uptime_hours:.1f}h</div><div class="label">Server Uptime</div></div>
@@ -673,7 +673,8 @@ if __name__ == "__main__":
 <div class="impact-card">
   <h2>The Population Health Impact</h2>
   <p><strong>Even before processing live calls, the static math is transformative:</strong><br>
-  If 10 physicians used AuthBridge daily (1 PA/day, 20 days/month), the clinic eliminates manual chart review and saves <strong>{proj_hours_saved:,.0f} hours</strong> and <strong>${proj_dollars_saved:,.0f}</strong> in administrative costs per month.</p>
+  If 10 physicians used AuthBridge daily (1 PA/day, 20 days/month), the clinic reduces manual chart review and drafting work by an estimated <strong>{proj_hours_saved:,.0f} hours</strong> and <strong>${proj_dollars_saved:,.0f}</strong> in administrative cost per month.</p>
+  <p style="font-size:12px;opacity:0.8;">Regulatory note: CMS-0057-F establishes FHIR prior authorization API and decision-timeframe requirements for covered items and services; the current medication PA demo uses the same interoperability pattern but remains a synthetic demonstration.</p>
 </div>
 
 <p style="color:#94a3b8;font-size:12px;margin-top:24px;">MCP endpoint: /sse · Health: /health · 
@@ -714,22 +715,40 @@ Built for Agents Assemble Healthcare AI Endgame 2026</p>
             return JSONResponse({"error": "Missing patient_id or drug_name"}, status_code=400)
             
         try:
-            pid = _validate_patient_id(patient_id)
-            ctx = await _fetch_patient_context(pid)
-            crit = await _lookup_pa_criteria(drug_name)
-            match = await _score_clinical_match(ctx, crit)
-            letter_result = await _draft_pa_letter(drug_name, crit, match, ctx)
-            summary = await _generate_patient_summary(drug_name, match, ctx, crit)
-            
-            return JSONResponse({
-                "score": match.get("score", 0),
-                "recommendation": match.get("recommendation", ""),
-                "urgency": match.get("urgency", {}),
-                "letter": letter_result.get("letter", ""),
-                "evidence_trail": match.get("fhir_evidence_trail", []),
-                "missing_criteria": match.get("missing_criteria", []),
-                "patient_summary": summary.get("summary", "")
-            })
+            t0 = time.time()
+            result = await run_full_pa_workflow(
+                patient_id=patient_id,
+                drug_name=drug_name,
+                prescriber_name=body.get("prescriber_name"),
+                prescriber_npi=body.get("prescriber_npi"),
+                prescriber_specialty=body.get("prescriber_specialty"),
+                prescriber_phone=body.get("prescriber_phone"),
+                practice_name=body.get("practice_name")
+            )
+
+            elapsed_seconds = round(time.time() - t0, 2)
+            evidence_count = len(result.get("fhir_evidence_trail", []))
+            result["elapsed_seconds"] = elapsed_seconds
+            result["impact_metrics"] = {
+                "manual_pa_minutes_baseline": 60,
+                "automation_seconds": elapsed_seconds,
+                "estimated_minutes_saved": max(0, round(60 - (elapsed_seconds / 60), 1)),
+                "evidence_resources": evidence_count,
+                "verification_status": result.get("verification", {}).get("overall_verdict", "UNKNOWN")
+            }
+            result["safety_controls"] = [
+                "Synthetic or de-identified data only in this demo",
+                "Strict patient ID validation before FHIR access",
+                "FHIR evidence trail attached to clinical claims",
+                "AI self-audit runs before clinician review",
+                "Clinician attestation required before submission"
+            ]
+            result["regulatory_note"] = (
+                "CMS-0057-F supports the FHIR prior authorization direction for covered items and services; "
+                "this medication PA demo is a synthetic workflow prototype and does not claim live payer submission."
+            )
+
+            return JSONResponse(result)
         except Exception as e:
             logger.error(f"API Error: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)

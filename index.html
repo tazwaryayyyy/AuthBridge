@@ -878,6 +878,96 @@
       font-weight: 600;
     }
 
+    .proof-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .proof-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      min-height: 78px;
+    }
+
+    .proof-card strong {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 20px;
+      line-height: 1;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .proof-card span {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .assurance-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .assurance-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .assurance-body {
+      padding: 10px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .assurance-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .assurance-list li {
+      display: flex;
+      gap: 8px;
+      line-height: 1.45;
+    }
+
+    .assurance-list li::before {
+      content: '✓';
+      color: var(--green);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .reasoning-trace {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .reasoning-trace ol {
+      padding: 10px 14px 10px 34px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    .reasoning-trace li {
+      margin-bottom: 6px;
+    }
+
     /* Step therapy */
     .step-therapy {
       background: var(--surface);
@@ -1437,6 +1527,11 @@
         grid-template-columns: 1fr;
       }
 
+      .proof-grid,
+      .assurance-grid {
+        grid-template-columns: 1fr;
+      }
+
       .clinician-fields {
         grid-template-columns: 1fr;
       }
@@ -1666,10 +1761,49 @@
             </div>
             <div id="recommendationPill" class="recommendation-pill">—</div>
           </div>
+          <!-- Live proof metrics -->
+          <div class="proof-grid" aria-label="Workflow proof metrics">
+            <div class="proof-card">
+              <strong id="elapsedMetric">--</strong>
+              <span>End-to-end runtime measured in this session</span>
+            </div>
+            <div class="proof-card">
+              <strong id="savedMetric">--</strong>
+              <span>Estimated manual drafting time avoided</span>
+            </div>
+            <div class="proof-card">
+              <strong id="evidenceMetric">--</strong>
+              <span>FHIR resources cited for clinical verification</span>
+            </div>
+            <div class="proof-card">
+              <strong id="verificationMetric">--</strong>
+              <span>AI self-audit status before clinician review</span>
+            </div>
+          </div>
+          <!-- Safety and feasibility -->
+          <div class="assurance-grid">
+            <div class="assurance-panel">
+              <div class="evidence-header">Production Safety Controls</div>
+              <div class="assurance-body">
+                <ul class="assurance-list" id="safetyControlsList"></ul>
+              </div>
+            </div>
+            <div class="assurance-panel">
+              <div class="evidence-header">Regulatory Positioning</div>
+              <div class="assurance-body" id="regulatoryNote">
+                Synthetic demonstration only. Live deployment requires organization-approved FHIR access, payer
+                connectivity, audit logging, access controls, and required business agreements.
+              </div>
+            </div>
+          </div>
           <!-- Clinical summary -->
           <div class="clinical-summary">
             <div class="clinical-summary-label">Clinical Reasoning</div>
             <span id="clinicalSummaryText">—</span>
+          </div>
+          <div class="reasoning-trace">
+            <div class="evidence-header">AI Reasoning Trace</div>
+            <ol id="reasoningTraceList"></ol>
           </div>
           <!-- Criteria grid -->
           <div class="criteria-grid">
@@ -1900,6 +2034,53 @@
       return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+
+    function normalizePaResponse(data, elapsedSeconds) {
+      const urgency = data.urgency || {};
+      const evidenceTrail = data.fhir_evidence_trail || data.evidence_trail || [];
+      const verification = data.verification || {};
+      const impact = data.impact_metrics || {};
+      return {
+        ...data,
+        is_urgent: data.is_urgent ?? urgency.is_urgent ?? false,
+        urgency_reason: data.urgency_reason || urgency.urgency_reason || '',
+        cms_timeline: data.cms_timeline || urgency.cms_timeline || '',
+        fhir_evidence_trail: evidenceTrail,
+        matched_criteria: data.matched_criteria || [],
+        missing_criteria: data.missing_criteria || [],
+        step_therapy_evidence: data.step_therapy_evidence || [],
+        missing_step_therapy: data.missing_step_therapy || [],
+        evidence_strength: data.evidence_strength || 'UNKNOWN',
+        verification,
+        elapsed_seconds: data.elapsed_seconds ?? Number(elapsedSeconds),
+        impact_metrics: {
+          manual_pa_minutes_baseline: impact.manual_pa_minutes_baseline ?? 60,
+          automation_seconds: impact.automation_seconds ?? Number(elapsedSeconds),
+          estimated_minutes_saved: impact.estimated_minutes_saved ?? Math.max(0, Math.round(60 - (Number(elapsedSeconds) / 60))),
+          evidence_resources: impact.evidence_resources ?? evidenceTrail.length,
+          verification_status: impact.verification_status || verification.overall_verdict || 'UNKNOWN'
+        },
+        safety_controls: data.safety_controls || [
+          'Synthetic or de-identified data only in this demo',
+          'Strict patient ID validation before FHIR access',
+          'FHIR evidence trail attached to clinical claims',
+          'AI self-audit runs before clinician review',
+          'Clinician attestation required before submission'
+        ],
+        regulatory_note: data.regulatory_note || 'Synthetic demonstration only. Live deployment requires approved FHIR access, payer connectivity, audit logging, access controls, and required business agreements.',
+        reasoning_trace: data.reasoning_trace || []
+      };
+    }
+
     function logAudit(type, title, actor, detail = '') {
       const entry = { type, title, actor, detail, time: nowStr() };
       auditEntries.push(entry);
@@ -1907,11 +2088,11 @@
       const div = document.createElement('div');
       div.className = 'audit-entry';
       div.innerHTML = `
-    <span class="audit-time">${entry.time}</span>
-    <div class="audit-dot ${type}"></div>
+    <span class="audit-time">${escapeHtml(entry.time)}</span>
+    <div class="audit-dot ${escapeHtml(type)}"></div>
     <div class="audit-body">
-      <h5>${entry.title} <span class="audit-actor">${entry.actor}</span></h5>
-      ${detail ? `<p>${detail}</p>` : ''}
+      <h5>${escapeHtml(entry.title)} <span class="audit-actor">${escapeHtml(entry.actor)}</span></h5>
+      ${detail ? `<p>${escapeHtml(detail)}</p>` : ''}
     </div>`;
       log.appendChild(div);
       document.getElementById('badge-audit').textContent = auditEntries.length;
@@ -2027,15 +2208,16 @@
         clearInterval(loadInterval);
         const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
 
-        currentData = data;
-        populateAll(data);
+        const normalized = normalizePaResponse(data, elapsed);
+        currentData = normalized;
+        populateAll(normalized);
         setStage(2);
 
         logAudit('system', `Analysis complete in ${elapsed}s`, 'AUTHBRIDGE',
-          `Score: ${data.score}/100 · ${data.recommendation} · ${data.is_urgent ? 'URGENT' : 'Standard'}`);
+          `Score: ${normalized.score}/100 · ${normalized.recommendation} · ${normalized.is_urgent ? 'URGENT' : 'Standard'}`);
 
-        document.getElementById('badge-analysis').textContent = `${data.score}/100`;
-        document.getElementById('badge-letter').textContent = data.letter ? `${(data.letter.split(' ').length)} words` : '—';
+        document.getElementById('badge-analysis').textContent = `${normalized.score}/100`;
+        document.getElementById('badge-letter').textContent = normalized.letter ? `${(normalized.letter.split(' ').length)} words` : '—';
         document.getElementById('badge-review').textContent = 'Ready';
         document.getElementById('badge-summary').textContent = 'Ready';
 
@@ -2086,8 +2268,10 @@
         'APPROVE': ['Approve', 'pill-approve', 'Strong clinical justification — all criteria met'],
         'LIKELY_APPROVE': ['Likely Approve', 'pill-likely', 'Most criteria met — minor gaps present'],
         'NEEDS_MORE_INFO': ['Needs More Info', 'pill-needs', 'Insufficient evidence — additional docs required'],
+        'NEEDS_INFO': ['Needs More Info', 'pill-needs', 'Insufficient evidence — additional docs required'],
         'LIKELY_DENY': ['Likely Deny', 'pill-deny', 'Significant criteria gaps — high denial risk'],
-        'DENY': ['Deny', 'pill-deny', 'Critical criteria not met — submission not recommended']
+        'DENY': ['Deny', 'pill-deny', 'Critical criteria not met — submission not recommended'],
+        'ERROR': ['Needs Review', 'pill-needs', 'Workflow failed or returned incomplete output']
       };
       const rec = recMap[data.recommendation] || ['Unknown', 'pill-needs', ''];
       document.getElementById('scoreLabel').textContent = rec[0];
@@ -2097,6 +2281,22 @@
       const pill = document.getElementById('recommendationPill');
       pill.textContent = rec[0];
       pill.className = 'recommendation-pill ' + rec[1];
+
+      const impact = data.impact_metrics || {};
+      document.getElementById('elapsedMetric').textContent = `${Number(data.elapsed_seconds || impact.automation_seconds || 0).toFixed(1)}s`;
+      document.getElementById('savedMetric').textContent = `${impact.estimated_minutes_saved ?? '--'}m`;
+      document.getElementById('evidenceMetric').textContent = `${impact.evidence_resources ?? (data.fhir_evidence_trail || []).length}`;
+      document.getElementById('verificationMetric').textContent = impact.verification_status || data.hallucination_risk || 'UNKNOWN';
+      document.getElementById('regulatoryNote').textContent = data.regulatory_note || '';
+
+      const safetyList = document.getElementById('safetyControlsList');
+      safetyList.innerHTML = (data.safety_controls || []).map(item => `<li>${escapeHtml(item)}</li>`).join('');
+
+      const traceList = document.getElementById('reasoningTraceList');
+      const trace = data.reasoning_trace || [];
+      traceList.innerHTML = trace.length
+        ? trace.slice(0, 6).map(item => `<li>${escapeHtml(item)}</li>`).join('')
+        : '<li>No trace returned. Review criteria, evidence trail, and generated letter manually.</li>';
 
       // Clinical summary
       document.getElementById('clinicalSummaryText').textContent = data.clinical_summary || 'No clinical summary available.';
@@ -2112,7 +2312,7 @@
       if (criticalMissing.length > 0 && score < 70) {
         isBlocked = true;
         hb.classList.add('show');
-        hl.innerHTML = criticalMissing.map(m => `<li>${m}</li>`).join('');
+        hl.innerHTML = criticalMissing.map(m => `<li>${escapeHtml(m)}</li>`).join('');
       } else { hb.classList.remove('show'); }
 
       // Criteria met
@@ -2120,7 +2320,7 @@
       const matched = data.matched_criteria || [];
       document.getElementById('metCount').textContent = matched.length;
       metList.innerHTML = matched.map(c =>
-        `<div class="criteria-item"><span class="criteria-item-icon">✓</span><span>${c}</span></div>`
+        `<div class="criteria-item"><span class="criteria-item-icon">✓</span><span>${escapeHtml(c)}</span></div>`
       ).join('') || '<div class="criteria-item"><span style="color:var(--text-muted)">None matched</span></div>';
 
       // Criteria missing
@@ -2130,7 +2330,7 @@
         const isCrit = criticalKeywords.some(k => c.toLowerCase().includes(k));
         return `<div class="criteria-item is-missing ${isCrit ? 'is-critical' : ''}">
       <span class="criteria-item-icon">✗</span>
-      <span>${c}</span>
+      <span>${escapeHtml(c)}</span>
       ${isCrit ? '<span class="critical-tag">CRITICAL</span>' : ''}
     </div>`;
       }).join('') || '<div class="criteria-item" style="color:var(--green)">✓ All criteria met</div>';
@@ -2140,10 +2340,10 @@
       const stepEvidence = data.step_therapy_evidence || [];
       const stepMissing = data.missing_step_therapy || [];
       stl.innerHTML = stepEvidence.map(s =>
-        `<div class="step-therapy-row"><span class="step-status">✓</span><span>${s}</span></div>`
+        `<div class="step-therapy-row"><span class="step-status">✓</span><span>${escapeHtml(s)}</span></div>`
       ).join('');
       stl.innerHTML += stepMissing.map(s =>
-        `<div class="step-therapy-row" style="color:var(--amber)"><span class="step-status">⚠</span><span>${s} — not documented</span></div>`
+        `<div class="step-therapy-row" style="color:var(--amber)"><span class="step-status">⚠</span><span>${escapeHtml(s)} — not documented</span></div>`
       ).join('');
       if (!stl.innerHTML) stl.innerHTML = '<div class="step-therapy-row" style="color:var(--text-muted)">No step therapy data available</div>';
 
@@ -2152,13 +2352,13 @@
       const trail = data.fhir_evidence_trail || [];
       document.getElementById('evidenceCount').textContent = `${trail.length} resources`;
       evList.innerHTML = trail.map(t => {
-        const parts = t.split('—');
-        return `<div class="evidence-item"><span class="evidence-type">${(parts[0] || '').trim()}</span> <span class="fhir-ref">—${(parts.slice(1).join('—')) || ''}</span></div>`;
+        const parts = String(t).split('—');
+        return `<div class="evidence-item"><span class="evidence-type">${escapeHtml((parts[0] || '').trim())}</span> <span class="fhir-ref">—${escapeHtml((parts.slice(1).join('—')) || '')}</span></div>`;
       }).join('') || '<div class="evidence-item" style="color:var(--text-muted)">No direct evidence citations found</div>';
 
       // Appeal trigger
       const at = document.getElementById('appealTrigger');
-      if (['LIKELY_DENY', 'DENY', 'NEEDS_MORE_INFO'].includes(data.recommendation)) {
+      if (['LIKELY_DENY', 'DENY', 'NEEDS_MORE_INFO', 'NEEDS_INFO'].includes(data.recommendation)) {
         at.classList.add('show');
       } else { at.classList.remove('show'); }
     }
@@ -2175,14 +2375,21 @@
       riskEl.className = 'risk-badge ' + (risk === 'LOW' ? 'risk-low' : risk === 'MEDIUM' ? 'risk-med' : 'risk-high');
 
       const vBody = document.getElementById('verifiedList');
-      vBody.innerHTML = (verify.verified_claims || []).map(c =>
-        `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--green)"><span>✓</span><span>${c}</span></div>`
-      ).join('');
+      const verifiedClaims = verify.verified_claims_with_confidence || verify.verified_claims || [];
+      vBody.innerHTML = verifiedClaims.map(c => {
+        const claim = typeof c === 'string'
+          ? c
+          : `${c.claim || 'Verified claim'}${c.evidence ? ' — ' + c.evidence : ''}${c.confidence != null ? ' (' + Math.round(c.confidence * 100) + '%)' : ''}`;
+        return `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--green)"><span>✓</span><span>${escapeHtml(claim)}</span></div>`;
+      }).join('');
 
       const uvBody = document.getElementById('unverifiedList');
-      uvBody.innerHTML = (verify.unverified_claims || []).map(c =>
-        `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--amber)"><span>⚠</span><span>${c}</span></div>`
-      ).join('');
+      uvBody.innerHTML = (verify.unverified_claims || []).map(c => {
+        const claim = typeof c === 'string'
+          ? c
+          : `${c.claim || 'Unverified claim'}${c.reason ? ' — ' + c.reason : ''}${c.confidence != null ? ' (' + Math.round(c.confidence * 100) + '%)' : ''}`;
+        return `<div style="display:flex;gap:8px;padding:5px 0;font-size:11px;border-bottom:1px solid var(--border);color:var(--amber)"><span>⚠</span><span>${escapeHtml(claim)}</span></div>`;
+      }).join('');
     }
 
     function populateReview(data) {
@@ -2237,10 +2444,10 @@
       logAudit('system', 'Appeal letter generation started', 'SYSTEM', `Denial reason: ${denialReason}`);
 
       try {
-        const resp = await fetch('/api/run-pa', {
+        const resp = await fetch('/api/run-appeal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient_id: pid, drug_name: drug, generate_appeal: true, denial_reason: denialReason })
+          body: JSON.stringify({ patient_id: pid, drug_name: drug, denial_reason: denialReason })
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Appeal failed');
@@ -2274,7 +2481,7 @@
     }
 
     function downloadPDF() {
-      const content = document.getElementById('letterBox').textContent.replace(/\n/g, '<br>');
+      const content = escapeHtml(document.getElementById('letterBox').textContent).replace(/\n/g, '<br>');
       const w = window.open('', '_blank', 'height=700,width=800');
       w.document.write(`<html><head><title>PA Letter</title>
     <style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.6;padding:48px;max-width:700px;margin:0 auto}</style>
