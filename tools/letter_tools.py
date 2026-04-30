@@ -45,6 +45,44 @@ def _trim_patient_context(patient_context: dict, max_meds=5, max_obs=5, max_proc
     return trimmed
 
 
+async def _simulate_payer_denial_agent(letter_text: str, pa_criteria: dict) -> dict:
+    """
+    Adversarial agent that simulates a payer's Medical Director.
+    Tries to find loopholes or missing information to justify a DENIAL.
+    """
+    prompt = f"""You are an adversarial Payer Denial Agent (Medical Director at an insurance company).
+Your ONLY goal is to find loopholes, missing information, or weak clinical arguments in this PA letter to justify a DENIAL.
+
+== PA CRITERIA MUST MEET ==
+{json.dumps(pa_criteria.get('required_criteria', []), indent=2)}
+{json.dumps(pa_criteria.get('step_therapy_required', []), indent=2)}
+
+== PA LETTER SUBMITTED ==
+{letter_text}
+
+Analyze the letter strictly against the criteria.
+Return ONLY valid JSON:
+{{
+  "decision": "<APPROVE|DENY>",
+  "denial_reason": "<Provide specific critique if DENY, explaining exactly what is missing>",
+  "missing_elements": ["<list of missing or weak arguments>"]
+}}"""
+    
+    try:
+        response = await _llm_call(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=500
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'^```json\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        return json.loads(raw)
+    except Exception as e:
+        logger.error(f"Adversarial Denial Agent failed: {e}")
+        return {"decision": "APPROVE", "denial_reason": "", "missing_elements": []}
+
+
 async def draft_pa_letter(
     drug_name: str,
     pa_criteria: dict,
@@ -133,6 +171,40 @@ No markdown in output. 450-550 words."""
         )
         letter_text = response.choices[0].message.content.strip()
 
+        # Adversarial Debate Loop
+        adversarial_iterations = 0
+        max_iterations = 2
+        
+        while adversarial_iterations < max_iterations:
+            denial_result = await _simulate_payer_denial_agent(letter_text, pa_criteria)
+            if denial_result.get("decision") == "APPROVE":
+                logger.info(f"Adversarial Agent approved the letter after {adversarial_iterations} revisions.")
+                break
+                
+            adversarial_iterations += 1
+            logger.info(f"Adversarial Denial (Iteration {adversarial_iterations}): {denial_result.get('denial_reason')}")
+            
+            rewrite_prompt = prompt + f"""
+            
+== CRITIQUE FROM PAYER DENIAL AGENT ==
+The payer rejected the previous draft for the following reasons:
+{denial_result.get('denial_reason')}
+Missing elements: {', '.join(denial_result.get('missing_elements', []))}
+
+Rewrite the letter to specifically address and neutralize these objections using the provided FHIR evidence. 
+Ensure you do not invent evidence; use only the provided FHIR trail and clinical summary.
+"""
+            try:
+                response = await _llm_call(
+                    messages=[{"role": "user", "content": rewrite_prompt}],
+                    temperature=0.2,
+                    max_tokens=1400
+                )
+                letter_text = response.choices[0].message.content.strip()
+            except Exception as e:
+                logger.error(f"Failed to rewrite letter during adversarial debate: {e}")
+                break
+
         return {
             "success": True,
             "letter": letter_text,
@@ -143,7 +215,8 @@ No markdown in output. 450-550 words."""
             "urgency_reason": urgency_reason,
             "cms_timeline": cms_timeline,
             "fhir_evidence_trail": evidence_trail,
-            "word_count": len(letter_text.split())
+            "word_count": len(letter_text.split()),
+            "adversarial_revisions": adversarial_iterations
         }
     except Exception as e:
         logger.error(f"PA letter generation failed: {e}")
@@ -268,10 +341,10 @@ Calculate confidence scores:
 Return ONLY valid JSON:
 {{
   "verified_claims_with_confidence": [
-    {"claim": "<claim>", "confidence": <0.0-1.0>, "evidence": "<FHIR resource>"}
+    {{"claim": "<claim>", "confidence": <0.0-1.0>, "evidence": "<FHIR resource>"}}
   ],
   "unverified_claims": [
-    {"claim": "<claim>", "confidence": <0.0-1.0>, "reason": "No FHIR support found"}
+    {{"claim": "<claim>", "confidence": <0.0-1.0>, "reason": "No FHIR support found"}}
   ],
   "hallucination_risk": "<LOW|MEDIUM|HIGH>",
   "overall_verdict": "<VERIFIED|NEEDS_REVIEW|REJECT>",

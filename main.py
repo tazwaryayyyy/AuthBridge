@@ -104,6 +104,7 @@ logger = logging.getLogger("authbridge")
 from tools.fhir_tools import fetch_patient_context as _fetch_patient_context
 from tools.criteria_tools import lookup_pa_criteria as _lookup_pa_criteria
 from tools.criteria_tools import score_clinical_match as _score_clinical_match
+from tools.criteria_tools import ingest_payer_policy as _ingest_payer_policy
 from tools.letter_tools import draft_pa_letter as _draft_pa_letter
 from tools.letter_tools import draft_appeal_letter as _draft_appeal_letter
 from tools.letter_tools import verify_pa_letter as _verify_pa_letter
@@ -244,6 +245,19 @@ async def draft_appeal_letter(
         prescriber_name, prescriber_npi, prescriber_specialty,
         prescriber_phone, practice_name, denial_date, reference_number
     )
+    return result
+
+@mcp.tool()
+async def ingest_payer_policy(
+    policy_text: str,
+    payer_name: str = "Unknown Payer"
+) -> dict:
+    """
+    Ingests unstructured payer policy text, extracts structured PA criteria using an LLM,
+    and dynamically updates the payer_criteria.json database.
+    """
+    logger.info(f"Ingesting new payer policy for {payer_name}")
+    result = await _ingest_payer_policy(policy_text, payer_name)
     return result
 
 @mcp.tool()

@@ -427,3 +427,96 @@ Return ONLY valid JSON:
             "urgency": urgency, "evidence_citations": evidence_citations,
             "fhir_evidence_trail": format_evidence_trail(evidence_citations)
         }
+
+async def ingest_payer_policy(policy_text: str, payer_name: str = "Unknown Payer") -> dict:
+    """
+    Ingests unstructured payer policy text, extracts structured PA criteria using an LLM,
+    and dynamically updates the payer_criteria.json database.
+    This demonstrates real-world scalability and dynamic rules engine updates.
+    """
+    logger.info(f"Ingesting new payer policy for {payer_name}...")
+    
+    prompt = f"""You are a clinical pharmacoeconomics specialist. 
+Extract the Prior Authorization criteria from the following unstructured policy text.
+Payer: {payer_name}
+
+POLICY TEXT:
+{policy_text[:4000]}
+
+Return ONLY valid JSON in the following format:
+{{
+  "drug_name": "extracted generic or brand name",
+  "drug_class": "extracted class",
+  "indication_matched": "primary indication this policy applies to",
+  "icd10_codes": ["array of ICD-10 codes if mentioned"],
+  "required_criteria": ["array of 4-6 specific clinical requirements"],
+  "step_therapy_required": ["array of drugs that must be tried and failed first"],
+  "supporting_fhir_resources": ["Condition", "Observation", "MedicationStatement"],
+  "clinical_guideline": "any mentioned guideline or simply the payer policy name",
+  "typical_payers": ["{payer_name}"],
+  "criteria_weights": {{
+     "example critical requirement": "CRITICAL",
+     "example high requirement": "HIGH"
+  }}
+}}"""
+
+    try:
+        response = await _llm_call(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=1000
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'^```json\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        
+        extracted_data = json.loads(raw)
+        
+        # Add to local DB
+        drug_name = extracted_data.get("drug_name", "Unknown_Drug")
+        drug_key = drug_name.lower().replace(" ", "_")
+        
+        # Load current DB
+        criteria_path = Path(__file__).parent.parent / "data" / "payer_criteria.json"
+        
+        try:
+            with open(criteria_path, "r") as f:
+                db = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            db = {}
+            
+        # Update DB
+        if drug_key in db:
+            # Append indication if it exists
+            db[drug_key]["indications"].append(extracted_data)
+        else:
+            db[drug_key] = {
+                "drug_name": drug_name,
+                "drug_class": extracted_data.get("drug_class", ""),
+                "brand_names": [drug_name],
+                "indications": [extracted_data]
+            }
+            
+        # Save back to file
+        with open(criteria_path, "w") as f:
+            json.dump(db, f, indent=2)
+            
+        # Invalidate cache
+        global _criteria_db
+        _criteria_db = db
+            
+        return {
+            "success": True,
+            "message": f"Successfully ingested policy for {drug_name}",
+            "extracted_criteria_count": len(extracted_data.get("required_criteria", [])),
+            "step_therapy_count": len(extracted_data.get("step_therapy_required", [])),
+            "drug_key": drug_key
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to ingest payer policy: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+

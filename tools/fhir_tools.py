@@ -318,6 +318,27 @@ async def _fhir_get(client: httpx.AsyncClient, path: str, params: Dict[str, Any]
     return response.json().get("entry", [])
 
 
+async def _mock_smart_auth_handshake(patient_id: str, requested_scopes: list) -> dict:
+    """
+    Simulates the OAuth2 SMART on FHIR authorization code flow.
+    Ensures the client has the requested scopes before allowing FHIR access.
+    """
+    logger.info(f"Initiating SMART on FHIR Auth handshake for patient/{patient_id}")
+    await asyncio.sleep(0.3) # Simulate network handshake
+    
+    if "patient/*.read" not in requested_scopes:
+        raise PermissionError("SMART on FHIR Auth Failed: Missing required scope 'patient/*.read'")
+        
+    logger.info("SMART on FHIR token acquired. Scopes validated.")
+    return {
+        "access_token": "mock_smart_token_9x8d7f",
+        "token_type": "Bearer",
+        "expires_in": 3600,
+        "scope": " ".join(requested_scopes),
+        "patient": patient_id
+    }
+
+
 async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = None) -> Dict[str, Any]:
     """
     Fetches a comprehensive clinical snapshot for a patient.
@@ -341,6 +362,14 @@ async def fetch_patient_context(patient_id: str, fhir_base_url: Optional[str] = 
         "clinical_notes": [],
         "fetch_errors": []
     }
+
+    # Step 0: Mock SMART on FHIR Auth
+    try:
+        auth_context = await _mock_smart_auth_handshake(patient_id, ["patient/*.read", "launch/patient"])
+        result["auth_context"] = auth_context
+    except Exception as e:
+        result["fetch_errors"].append(f"Auth Error: {str(e)}")
+        return result
 
     async with httpx.AsyncClient(timeout=FHIR_TIMEOUT, base_url=base) as client:
         # Step 1: Patient demographics (must be first or could be parallel)
