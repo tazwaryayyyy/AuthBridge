@@ -305,12 +305,12 @@ async def generate_patient_summary(
 async def run_full_pa_workflow(
     patient_id: str,
     drug_name: str,
-    prescriber_name: Optional[str] = None,
-    prescriber_npi: Optional[str] = None,
-    prescriber_specialty: Optional[str] = None,
-    prescriber_phone: Optional[str] = None,
-    practice_name: Optional[str] = None,
-    payer: Optional[str] = None
+    prescriber_name: str = "",
+    prescriber_npi: str = "",
+    prescriber_specialty: str = "",
+    prescriber_phone: str = "",
+    practice_name: str = "",
+    payer: str = ""
 ) -> dict:
     """
     Runs the complete AuthBridge prior authorization workflow in a single call.
@@ -335,7 +335,7 @@ async def run_full_pa_workflow(
     patient_context = await _fetch_patient_context(patient_id)
 
     # Step 2: Criteria
-    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer)
+    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
 
     # Step 3: Score
     match_result = await _score_clinical_match(patient_context, pa_criteria)
@@ -432,12 +432,12 @@ async def run_full_appeal_workflow(
     patient_id: str,
     drug_name: str,
     denial_reason: str,
-    prescriber_name: Optional[str] = None,
-    prescriber_npi: Optional[str] = None,
-    prescriber_specialty: Optional[str] = None,
-    prescriber_phone: Optional[str] = None,
-    practice_name: Optional[str] = None,
-    payer: Optional[str] = None
+    prescriber_name: str = "",
+    prescriber_npi: str = "",
+    prescriber_specialty: str = "",
+    prescriber_phone: str = "",
+    practice_name: str = "",
+    payer: str = ""
 ) -> dict:
     """
     Runs the complete appeal letter workflow in a single call.
@@ -445,7 +445,7 @@ async def run_full_appeal_workflow(
     """
     _validate_patient_id(patient_id)
     patient_context = await _fetch_patient_context(patient_id)
-    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer)
+    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
     appeal_result = await _draft_appeal_letter(
         drug_name=drug_name,
         denial_reason=denial_reason,
@@ -483,13 +483,13 @@ async def run_full_appeal_workflow(
 async def simulate_pa_lifecycle(
     patient_id: str,
     drug_name: str,
-    prescriber_name: Optional[str] = None,
-    prescriber_npi: Optional[str] = None,
-    prescriber_specialty: Optional[str] = None,
-    prescriber_phone: Optional[str] = None,
-    practice_name: Optional[str] = None,
-    denial_reason: Optional[str] = None,
-    payer: Optional[str] = None
+    prescriber_name: str = "",
+    prescriber_npi: str = "",
+    prescriber_specialty: str = "",
+    prescriber_phone: str = "",
+    practice_name: str = "",
+    denial_reason: str = "",
+    payer: str = ""
 ) -> dict:
     """
     Simulates the complete PA lifecycle from submission to final resolution.
@@ -611,6 +611,20 @@ async def batch_pa_check(patient_ids: List[str], drug_name: str) -> dict:
             reverse=True
         )
     }
+
+
+# Keep the public MCP surface small and registry-friendly. The lower-level
+# functions remain available to the Python app, but hosted MCP registries such
+# as Prompt Opinion only need the single-call workflows below.
+PUBLIC_MCP_TOOLS = {
+    "run_full_pa_workflow",
+    "run_full_appeal_workflow",
+    "simulate_pa_lifecycle",
+}
+
+for _tool_name in list(mcp._tool_manager._tools.keys()):
+    if _tool_name not in PUBLIC_MCP_TOOLS:
+        mcp.remove_tool(_tool_name)
 
 # ─── Server Entry Point ───────────────────────────────────────────────────────
 
