@@ -113,39 +113,52 @@ from tools.letter_tools import generate_patient_summary as _generate_patient_sum
 # ─── Initialize FastMCP Server ───────────────────────────────────────────────
 
 mcp = FastMCP(
-    name="authbridge",
-    instructions="""
-You are AuthBridge, a prior authorization specialist agent.
-
-For ALL prior authorization requests, call run_full_pa_workflow with:
-- patient_id: the patient's FHIR ID
-- drug_name: the drug requiring PA
-- prescriber details if provided
-
-This single tool runs all 6 steps automatically and returns the complete output.
-
-For ALL appeal letter requests, call run_full_appeal_workflow with:
-- patient_id: the patient's FHIR ID
-- drug_name: the drug requiring PA
-- denial_reason: the specific denial reason from the payer
-- prescriber details if provided
-
-This single tool fetches patient context, looks up criteria, and drafts the appeal.
-
-After PA workflow returns, present to the clinician:
-1. Score and recommendation
-2. Urgency flag (if CMS-0057-F 72-hour review applies)
-3. Matched and missing criteria
-4. The complete PA letter
-5. Verification result (hallucination risk)
-6. Patient summary
-
-After appeal workflow returns, present the complete appeal letter.
-
-Never call fetch_patient_context, lookup_pa_criteria, score_clinical_match, or draft_appeal_letter 
-individually — always use the unified workflow tools.
-"""
+    name="AuthBridge",
+    instructions="FHIR-native prior authorization agent. Reads patient FHIR records, matches payer criteria, scores evidence, and drafts complete PA letters and appeals."
 )
+
+from starlette.middleware.base import BaseHTTPMiddleware
+
+FHIR_EXTENSION = {
+    "ai.promptopinion/fhir-context": {
+        "scopes": [
+            {"name": "patient/Patient.rs",            "required": True},
+            {"name": "patient/Condition.rs",           "required": True},
+            {"name": "patient/MedicationRequest.rs"},
+            {"name": "patient/MedicationStatement.rs"},
+            {"name": "patient/Observation.rs"},
+            {"name": "patient/Procedure.rs"},
+            {"name": "patient/AllergyIntolerance.rs"},
+        ]
+    }
+}
+
+class FHIRExtensionMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        return await call_next(request)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            async def send_wrapper(message):
+                if message["type"] == "http.response.body":
+                    body = message.get("body", b"")
+                    try:
+                        data = json.loads(body)
+                        # Inject into initialize responses only
+                        if (isinstance(data, dict) and 
+                            data.get("result", {}).get("serverInfo") is not None):
+                            caps = data["result"].setdefault("capabilities", {})
+                            caps.setdefault("extensions", {}).update(FHIR_EXTENSION)
+                            body = json.dumps(data).encode()
+                            message = {**message, "body": body}
+                    except (json.JSONDecodeError, AttributeError):
+                        pass
+                await send(message)
+            
+            await self.app(scope, receive, send_wrapper)
+        else:
+            await self.app(scope, receive, send)
+
 
 # ─── Tool Registrations ───────────────────────────────────────────────────────
 
@@ -850,6 +863,7 @@ if __name__ == "__main__":
     starlette_app.state.limiter = limiter
     starlette_app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     starlette_app.add_middleware(SlowAPIMiddleware)
+    starlette_app.add_middleware(FHIRExtensionMiddleware)
 
     logger.info(f"AuthBridge MCP listening at http://{host}:{port}/sse")
     uvicorn.run(starlette_app, host=host, port=port)
