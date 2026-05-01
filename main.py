@@ -14,7 +14,7 @@ import logging
 import re
 import asyncio
 import json
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 from collections import defaultdict
@@ -586,7 +586,7 @@ async def _single_pa_score(pid: str, drug_name: str) -> dict:
     return res
 
 @mcp.tool()
-async def batch_pa_check(patient_ids: list, drug_name: str) -> dict:
+async def batch_pa_check(patient_ids: List[str], drug_name: str) -> dict:
     """
     Runs PA eligibility scoring for multiple patients simultaneously.
     Returns ranked results with scores and urgency flags.
@@ -637,6 +637,21 @@ if __name__ == "__main__":
 
     async def health(request):
         return JSONResponse({"status": "ok", "service": "authbridge", "mcp": "sse"})
+
+    async def mcp_tools_debug(request):
+        tools = await mcp.list_tools()
+        return JSONResponse({
+            "status": "ok",
+            "count": len(tools),
+            "tools": [
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "inputSchema": tool.inputSchema,
+                }
+                for tool in tools
+            ],
+        })
         
     async def serve_index(request):
         return FileResponse("index.html")
@@ -857,6 +872,7 @@ if __name__ == "__main__":
             Route("/api/run-appeal", endpoint=run_appeal_api, methods=["POST"]),
             Route("/api/run-pa-lifecycle", endpoint=run_pa_lifecycle_api, methods=["POST"]),
             Route("/health", endpoint=health),
+            Route("/mcp/tools", endpoint=mcp_tools_debug),
             Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse.handle_post_message),
         ]
