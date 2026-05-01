@@ -148,30 +148,39 @@ class FHIRExtensionMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            async def send_wrapper(message):
-                if message["type"] == "http.response.body":
-                    body = message.get("body", b"")
-                    try:
-                        # Only try to parse valid JSON, skip SSE streams and binary
-                        if body and not body.startswith(b"data:"):
-                            data = json.loads(body)
-                            # Inject into initialize responses only
-                            if (isinstance(data, dict) and
-                                    data.get("result", {}).get("serverInfo") is not None):
-                                caps = data["result"].setdefault(
-                                    "capabilities", {})
-                                caps.setdefault("extensions", {}).update(
-                                    FHIR_EXTENSION)
-                                body = json.dumps(data).encode()
-                                message = {**message, "body": body}
-                    except (json.JSONDecodeError, UnicodeDecodeError):
-                        pass  # Not JSON, skip modification
-                await send(message)
-
-            await self.app(scope, receive, send_wrapper)
-        else:
+        if scope["type"] != "http":
             await self.app(scope, receive, send)
+            return
+
+        # Skip middleware for SSE and streaming endpoints
+        path = scope.get("path", "")
+        if path.startswith("/sse") or path.startswith("/messages/"):
+            await self.app(scope, receive, send)
+            return
+
+        async def send_wrapper(message):
+            # Only try to modify response body, pass through everything else
+            if message["type"] == "http.response.body":
+                body = message.get("body", b"")
+                try:
+                    # Skip empty bodies and SSE data
+                    if body and not body.startswith(b"data:"):
+                        data = json.loads(body)
+                        # Check if this is an initialize response
+                        if (isinstance(data, dict) and
+                                data.get("result", {}).get("serverInfo") is not None):
+                            caps = data["result"].setdefault(
+                                "capabilities", {})
+                            caps.setdefault("extensions", {}).update(
+                                FHIR_EXTENSION)
+                            body = json.dumps(data).encode()
+                            message = {**message, "body": body}
+                except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+                    pass  # Not JSON, send as-is
+
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
 # ─── Tool Registrations ───────────────────────────────────────────────────────
@@ -758,6 +767,29 @@ if __name__ == "__main__":
 </html>"""
         return HTMLResponse(html)
 
+    class FHIRInjectingStream:
+        """Wraps MCP output stream to inject FHIR extension into initialize response"""
+
+        def __init__(self, stream):
+            self.stream = stream
+            self._initialized = False
+
+        async def write(self, data: str):
+            # Intercept initialize response and inject FHIR extension
+            if not self._initialized and data:
+                try:
+                    msg = json.loads(data)
+                    # Check if this is the initialize response (id: 1)
+                    if msg.get("id") == 1 and msg.get("result", {}).get("serverInfo"):
+                        self._initialized = True
+                        caps = msg["result"].setdefault("capabilities", {})
+                        caps.setdefault("extensions", {}).update(
+                            FHIR_EXTENSION)
+                        data = json.dumps(msg)
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    pass
+            await self.stream.write(data)
+
     class SSEHandler:
         async def __call__(self, scope, receive, send):
             # Correctly wire FastMCP's internal server to the SSE transport
@@ -766,30 +798,10 @@ if __name__ == "__main__":
                     scope, receive, send
                 ) as streams:
                     read_stream, write_stream = streams
-
-                    # Wrap the write stream to inject FHIR extension into initialize response
-                    original_write = write_stream.write
-
-                    async def fhir_injecting_write(data: str):
-                        try:
-                            msg = json.loads(data)
-                            # If this is an initialize response, inject FHIR extension
-                            if (msg.get("id") == 1 and  # Initialize responses have id: 1
-                                    msg.get("result", {}).get("serverInfo")):
-                                caps = msg["result"].setdefault(
-                                    "capabilities", {})
-                                caps.setdefault("extensions", {}).update(
-                                    FHIR_EXTENSION)
-                                data = json.dumps(msg)
-                        except (json.JSONDecodeError, KeyError, TypeError):
-                            pass  # Not JSON or not an initialize response, send as-is
-
-                        await original_write(data)
-
-                    write_stream.write = fhir_injecting_write
-
+                    # Wrap write stream to inject FHIR extension
+                    fhir_stream = FHIRInjectingStream(write_stream)
                     await mcp._mcp_server.run(
-                        read_stream, write_stream,
+                        read_stream, fhir_stream,
                         mcp._mcp_server.create_initialization_options()
                     )
             except Exception as e:
