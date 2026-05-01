@@ -662,6 +662,34 @@ for _tool_name in list(mcp._tool_manager._tools.keys()):
     if _tool_name not in PUBLIC_MCP_TOOLS:
         mcp.remove_tool(_tool_name)
 
+
+# Patch MCP server to include FHIR extension in initialize response
+def _patch_mcp_capabilities():
+    """Ensure FHIR extension is included in MCP server capabilities"""
+    try:
+        # Access the internal MCP server
+        if hasattr(mcp, '_mcp_server'):
+            server = mcp._mcp_server
+            # Patch the create_initialization_options method
+            original_create_init_options = server.create_initialization_options
+
+            def patched_create_init_options(*args, **kwargs):
+                init_opts = original_create_init_options(*args, **kwargs)
+                # Add FHIR extension to capabilities
+                if hasattr(init_opts, 'capabilities'):
+                    if not hasattr(init_opts.capabilities, 'extensions'):
+                        init_opts.capabilities.extensions = {}
+                    init_opts.capabilities.extensions.update(FHIR_EXTENSION)
+                return init_opts
+
+            server.create_initialization_options = patched_create_init_options
+            logger.info("Patched MCP server to include FHIR extension")
+    except Exception as e:
+        logger.warning(f"Could not patch MCP capabilities: {e}")
+
+
+_patch_mcp_capabilities()
+
 # ─── Server Entry Point ───────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -767,36 +795,6 @@ if __name__ == "__main__":
 </html>"""
         return HTMLResponse(html)
 
-    class FHIRInjectingStream:
-        """Wraps MCP output stream to inject FHIR extension into initialize response"""
-
-        def __init__(self, stream):
-            self.stream = stream
-            self._initialized = False
-
-        async def write(self, data: str):
-            # Intercept initialize response and inject FHIR extension
-            if not self._initialized and data:
-                try:
-                    msg = json.loads(data)
-                    # Check if this is the initialize response (id: 1)
-                    if msg.get("id") == 1 and msg.get("result", {}).get("serverInfo"):
-                        self._initialized = True
-                        caps = msg["result"].setdefault("capabilities", {})
-                        caps.setdefault("extensions", {}).update(
-                            FHIR_EXTENSION)
-                        data = json.dumps(msg)
-                except (json.JSONDecodeError, KeyError, TypeError):
-                    pass
-            await self.stream.write(data)
-
-        async def aclose(self):
-            await self.stream.aclose()
-
-        def __getattr__(self, name):
-            # Delegate all other attributes to the underlying stream
-            return getattr(self.stream, name)
-
     class SSEHandler:
         async def __call__(self, scope, receive, send):
             # Correctly wire FastMCP's internal server to the SSE transport
@@ -804,11 +802,8 @@ if __name__ == "__main__":
                 async with sse.connect_sse(
                     scope, receive, send
                 ) as streams:
-                    read_stream, write_stream = streams
-                    # Wrap write stream to inject FHIR extension
-                    fhir_stream = FHIRInjectingStream(write_stream)
                     await mcp._mcp_server.run(
-                        read_stream, fhir_stream,
+                        streams[0], streams[1],
                         mcp._mcp_server.create_initialization_options()
                     )
             except Exception as e:
