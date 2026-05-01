@@ -682,8 +682,7 @@ if __name__ == "__main__":
   <p style="font-size:12px;opacity:0.8;">Regulatory note: CMS-0057-F establishes FHIR prior authorization API and decision-timeframe requirements for covered items and services; the current medication PA demo uses the same interoperability pattern but remains a synthetic demonstration.</p>
 </div>
 
-<p style="color:#94a3b8;font-size:12px;margin-top:24px;">MCP endpoint: /sse · Health: /health · 
-Built for Agents Assemble Healthcare AI Endgame 2026</p>
+<p style="color:#94a3b8;font-size:12px;margin-top:24px;">MCP endpoint: /sse · Health: /health</p>
 </body>
 </html>"""
         return HTMLResponse(html)
