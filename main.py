@@ -790,6 +790,13 @@ if __name__ == "__main__":
                     pass
             await self.stream.write(data)
 
+        async def aclose(self):
+            await self.stream.aclose()
+
+        def __getattr__(self, name):
+            # Delegate all other attributes to the underlying stream
+            return getattr(self.stream, name)
+
     class SSEHandler:
         async def __call__(self, scope, receive, send):
             # Correctly wire FastMCP's internal server to the SSE transport
