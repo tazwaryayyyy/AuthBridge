@@ -133,9 +133,9 @@ FHIR_EXTENSION = {
     }
 }
 
-class FHIRExtensionMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        return await call_next(request)
+class FHIRExtensionMiddleware:
+    def __init__(self, app):
+        self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
@@ -151,7 +151,7 @@ class FHIRExtensionMiddleware(BaseHTTPMiddleware):
                             caps.setdefault("extensions", {}).update(FHIR_EXTENSION)
                             body = json.dumps(data).encode()
                             message = {**message, "body": body}
-                    except (json.JSONDecodeError, AttributeError):
+                    except Exception:
                         pass
                 await send(message)
             
