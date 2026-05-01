@@ -700,20 +700,21 @@ if __name__ == "__main__":
 </html>"""
         return HTMLResponse(html)
 
-    async def handle_sse(scope, receive, send):
-        # Correctly wire FastMCP's internal server to the SSE transport
-        try:
-            async with sse.connect_sse(
-                scope, receive, send
-            ) as streams:
-                await mcp._mcp_server.run(
-                    streams[0], streams[1],
-                    mcp._mcp_server.create_initialization_options()
-                )
-        except Exception as e:
-            logger.error(f"SSE connection error: {e}")
-            # Don't return anything here - SSE streams handle their own responses
-
+    class SSEHandler:
+        async def __call__(self, scope, receive, send):
+            # Correctly wire FastMCP's internal server to the SSE transport
+            try:
+                async with sse.connect_sse(
+                    scope, receive, send
+                ) as streams:
+                    await mcp._mcp_server.run(
+                        streams[0], streams[1],
+                        mcp._mcp_server.create_initialization_options()
+                    )
+            except Exception as e:
+                logger.error(f"SSE connection error: {e}")
+                
+    handle_sse = SSEHandler()
     @limiter.limit("50/minute")
     async def run_pa_api(request):
         # Request size limit 1MB
@@ -854,7 +855,7 @@ if __name__ == "__main__":
             Route("/api/run-appeal", endpoint=run_appeal_api, methods=["POST"]),
             Route("/api/run-pa-lifecycle", endpoint=run_pa_lifecycle_api, methods=["POST"]),
             Route("/health", endpoint=health),
-            Mount("/sse", app=handle_sse),
+            Route("/sse", endpoint=handle_sse),
             Mount("/messages/", app=sse.handle_post_message),
         ]
     )
