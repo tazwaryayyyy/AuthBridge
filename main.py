@@ -715,6 +715,8 @@ if __name__ == "__main__":
                 logger.error(f"SSE connection error: {e}")
                 
     handle_sse = SSEHandler()
+    handle_sse.__name__ = "handle_sse"
+    handle_sse.__module__ = __name__
     @limiter.limit("50/minute")
     async def run_pa_api(request):
         # Request size limit 1MB
