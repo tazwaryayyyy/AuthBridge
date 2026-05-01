@@ -149,28 +149,24 @@ class FHIRExtensionMiddleware:
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
-            # Skip middleware for SSE endpoints and streaming connections
-            path = scope.get("path", "")
-            if path.startswith("/sse") or path.startswith("/messages/"):
-                await self.app(scope, receive, send)
-                return
-
             async def send_wrapper(message):
                 if message["type"] == "http.response.body":
                     body = message.get("body", b"")
                     try:
-                        data = json.loads(body)
-                        # Inject into initialize responses only
-                        if (isinstance(data, dict) and
-                                data.get("result", {}).get("serverInfo") is not None):
-                            caps = data["result"].setdefault(
-                                "capabilities", {})
-                            caps.setdefault("extensions", {}).update(
-                                FHIR_EXTENSION)
-                            body = json.dumps(data).encode()
-                            message = {**message, "body": body}
-                    except Exception:
-                        pass
+                        # Only try to parse valid JSON, skip SSE streams and binary
+                        if body and not body.startswith(b"data:"):
+                            data = json.loads(body)
+                            # Inject into initialize responses only
+                            if (isinstance(data, dict) and
+                                    data.get("result", {}).get("serverInfo") is not None):
+                                caps = data["result"].setdefault(
+                                    "capabilities", {})
+                                caps.setdefault("extensions", {}).update(
+                                    FHIR_EXTENSION)
+                                body = json.dumps(data).encode()
+                                message = {**message, "body": body}
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        pass  # Not JSON, skip modification
                 await send(message)
 
             await self.app(scope, receive, send_wrapper)
@@ -642,6 +638,14 @@ async def batch_pa_check(patient_ids: List[str], drug_name: str) -> dict:
             reverse=True
         )
     }
+
+
+# Inject FHIR capabilities into FastMCP's internal server
+# This ensures the FHIR extension is included in the initialize response
+if hasattr(mcp, '_mcp_server') and hasattr(mcp._mcp_server, 'capabilities'):
+    if not hasattr(mcp._mcp_server.capabilities, 'extensions'):
+        mcp._mcp_server.capabilities.extensions = {}
+    mcp._mcp_server.capabilities.extensions.update(FHIR_EXTENSION)
 
 
 # Keep the public MCP surface small and registry-friendly. The lower-level
