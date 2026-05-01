@@ -640,14 +640,6 @@ async def batch_pa_check(patient_ids: List[str], drug_name: str) -> dict:
     }
 
 
-# Inject FHIR capabilities into FastMCP's internal server
-# This ensures the FHIR extension is included in the initialize response
-if hasattr(mcp, '_mcp_server') and hasattr(mcp._mcp_server, 'capabilities'):
-    if not hasattr(mcp._mcp_server.capabilities, 'extensions'):
-        mcp._mcp_server.capabilities.extensions = {}
-    mcp._mcp_server.capabilities.extensions.update(FHIR_EXTENSION)
-
-
 # Keep the public MCP surface small and registry-friendly. The lower-level
 # functions remain available to the Python app, but hosted MCP registries such
 # as Prompt Opinion only need the single-call workflows below.
@@ -773,8 +765,31 @@ if __name__ == "__main__":
                 async with sse.connect_sse(
                     scope, receive, send
                 ) as streams:
+                    read_stream, write_stream = streams
+
+                    # Wrap the write stream to inject FHIR extension into initialize response
+                    original_write = write_stream.write
+
+                    async def fhir_injecting_write(data: str):
+                        try:
+                            msg = json.loads(data)
+                            # If this is an initialize response, inject FHIR extension
+                            if (msg.get("id") == 1 and  # Initialize responses have id: 1
+                                    msg.get("result", {}).get("serverInfo")):
+                                caps = msg["result"].setdefault(
+                                    "capabilities", {})
+                                caps.setdefault("extensions", {}).update(
+                                    FHIR_EXTENSION)
+                                data = json.dumps(msg)
+                        except (json.JSONDecodeError, KeyError, TypeError):
+                            pass  # Not JSON or not an initialize response, send as-is
+
+                        await original_write(data)
+
+                    write_stream.write = fhir_injecting_write
+
                     await mcp._mcp_server.run(
-                        streams[0], streams[1],
+                        read_stream, write_stream,
                         mcp._mcp_server.create_initialization_options()
                     )
             except Exception as e:
