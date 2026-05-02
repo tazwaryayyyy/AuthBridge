@@ -12,9 +12,12 @@
 
 ## Marketplace Listing
 
-You can discover and invoke the AuthBridge Prior Authorization Agent directly on the Prompt Opinion Marketplace:
+AuthBridge is published on the Prompt Opinion Marketplace as two discoverable components:
 
-👉 **[AuthBridge on Prompt Opinion](https://app.promptopinion.ai/marketplace/agent/019d3f98-f595-7610-80f0-645ebb9b5f9f)**
+AuthBridge MCP Tools — [MCP Tools](https://app.promptopinion.ai/marketplace/agent/019d3f98-f595-7610-80f0-645ebb9b5f9f)
+AuthBridge Orchestrator (A2A) — [Orchestrator](https://app.promptopinion.ai/marketplace/agent/019d3f9d-9c02-74b6-b309-8f278dac11fe)
+
+Invoke the Orchestrator directly for end-to-end PA automation via A2A, or add the MCP Tools to your own agent workspace.
 
 ---
 
