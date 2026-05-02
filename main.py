@@ -355,6 +355,10 @@ async def run_full_pa_workflow(
         prescriber_phone: Direct phone for peer-to-peer review (optional)
         practice_name: Practice or health system name (optional)
     """
+    if not patient_id or not patient_id.strip():
+        return {"error": "patient_id is required", "status": "missing_input"}
+    if not drug_name or not drug_name.strip():
+        return {"error": "drug_name is required", "status": "missing_input"}
     _validate_patient_id(patient_id)
     logger.info(
         f"Running full PA workflow: patient={patient_id}, drug={drug_name}")
@@ -473,6 +477,12 @@ async def run_full_appeal_workflow(
     Runs the complete appeal letter workflow in a single call.
     Fetches FHIR patient context, looks up payer criteria, then drafts a formal appeal.
     """
+    if not patient_id or not patient_id.strip():
+        return {"error": "patient_id is required", "status": "missing_input"}
+    if not drug_name or not drug_name.strip():
+        return {"error": "drug_name is required", "status": "missing_input"}
+    if not denial_reason or not denial_reason.strip():
+        return {"error": "denial_reason is required", "status": "missing_input"}
     _validate_patient_id(patient_id)
     patient_context = await _fetch_patient_context(patient_id)
     pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
