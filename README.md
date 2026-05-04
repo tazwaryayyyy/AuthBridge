@@ -532,4 +532,4 @@ MIT License — open for the entire healthcare AI ecosystem.
 *Prompt Opinion Platform · MCP + A2A + FHIR R4*
 *USCDI v1.1*
 
-Created by [Tazwar Ahnnaf Enan](https://x.com/TazwarEnan) | <a href="https://x.com/TazwarEnan" target="_blank">X (Twitter)</a>
+Created by [Tazwar Ahnaf Enan](https://x.com/TazwarEnan) | <a href="https://x.com/TazwarEnan" target="_blank">X (Twitter)</a>
