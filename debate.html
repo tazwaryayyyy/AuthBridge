@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>AuthBridge Adversarial Debate Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal:        #1E9B8A;
+    --teal-dim:    #155F56;
+    --teal-glow:   rgba(30,155,138,0.15);
+    --red:         #E05252;
+    --red-dim:     rgba(224,82,82,0.15);
+    --gold:        #C9922A;
+    --gold-dim:    rgba(201,146,42,0.12);
+    --green:       #2A9B6B;
+    --green-dim:   rgba(42,155,107,0.12);
+    --navy:        #07101E;
+    --navy-mid:    #0C1829;
+    --navy-card:   #0F1E35;
+    --slate:       #162840;
+    --text:        #DCE9F6;
+    --text-dim:    #6080A0;
+    --border:      rgba(30,155,138,0.2);
+    --border-dim:  rgba(255,255,255,0.06);
+  }
+
+  body {
+    width: 1200px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--navy);
+    font-family: 'Syne', sans-serif;
+    color: var(--text);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 56px 36px;
+    gap: 24px;
+  }
+
+  /* Grid bg */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30,155,138,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,155,138,0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* Ambient glow left-center */
+  body::after {
+    content: '';
+    position: absolute;
+    top: 40%; left: 10%;
+    width: 500px; height: 400px;
+    background: radial-gradient(ellipse, rgba(30,155,138,0.07) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+
+  .header-left {}
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 5px;
+  }
+
+  .title {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-dim);
+    margin-top: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .header-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .badge-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    padding: 4px 12px;
+    border-radius: 2px;
+    letter-spacing: 0.08em;
+  }
+
+  .badge-pill.teal {
+    background: rgba(30,155,138,0.1);
+    border: 1px solid var(--border);
+    color: var(--teal);
+  }
+
+  .badge-pill.dim {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-dim);
+    color: var(--text-dim);
+  }
+
+  /* Main flow container */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Each agent card */
+  .agent {
+    display: flex;
+    flex-direction: column;
+    width: 218px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .agent-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .agent-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .agent-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .agent-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    margin-bottom: 1px;
+  }
+
+  .agent-title {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+  }
+
+  .card-body {
+    border-radius: 8px;
+    border: 1px solid;
+    padding: 14px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+  }
+
+  .card-body::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+  }
+
+  .card-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .card-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  .card-detail {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    line-height: 1.6;
+    padding: 8px 10px;
+    border-radius: 4px;
+    margin-top: auto;
+  }
+
+  /* Teal — Clinician Agent */
+  .agent-clinician .agent-icon { border-color: rgba(30,155,138,0.4); background: rgba(30,155,138,0.08); }
+  .agent-clinician .agent-num { color: var(--teal); }
+  .agent-clinician .card-body { border-color: rgba(30,155,138,0.25); background: rgba(12,24,41,0.9); }
+  .agent-clinician .card-body::before { background: var(--teal); }
+  .agent-clinician .card-label { color: var(--teal); }
+  .agent-clinician .card-detail { background: rgba(30,155,138,0.07); border: 1px solid rgba(30,155,138,0.15); color: var(--teal); }
+
+  /* Red — Payer Denial */
+  .agent-payer .agent-icon { border-color: rgba(224,82,82,0.4); background: rgba(224,82,82,0.08); }
+  .agent-payer .agent-num { color: var(--red); }
+  .agent-payer .card-body { border-color: rgba(224,82,82,0.22); background: rgba(12,24,41,0.9); }
+  .agent-payer .card-body::before { background: var(--red); }
+  .agent-payer .card-label { color: var(--red); }
+  .agent-payer .card-detail { background: rgba(224,82,82,0.07); border: 1px solid rgba(224,82,82,0.15); color: var(--red); }
+
+  /* Gold — Revised Letter */
+  .agent-revised .agent-icon { border-color: rgba(201,146,42,0.4); background: rgba(201,146,42,0.08); }
+  .agent-revised .agent-num { color: var(--gold); }
+  .agent-revised .card-body { border-color: rgba(201,146,42,0.22); background: rgba(12,24,41,0.9); }
+  .agent-revised .card-body::before { background: var(--gold); }
+  .agent-revised .card-label { color: var(--gold); }
+  .agent-revised .card-detail { background: rgba(201,146,42,0.07); border: 1px solid rgba(201,146,42,0.15); color: var(--gold); }
+
+  /* Green — Verifier */
+  .agent-verifier .agent-icon { border-color: rgba(42,155,107,0.4); background: rgba(42,155,107,0.08); }
+  .agent-verifier .agent-num { color: var(--green); }
+  .agent-verifier .card-body { border-color: rgba(42,155,107,0.25); background: rgba(12,24,41,0.9); }
+  .agent-verifier .card-body::before { background: var(--green); }
+  .agent-verifier .card-label { color: var(--green); }
+  .agent-verifier .card-detail { background: rgba(42,155,107,0.07); border: 1px solid rgba(42,155,107,0.15); color: var(--green); }
+
+  /* Connectors between cards */
+  .connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    flex-shrink: 0;
+    gap: 4px;
+    position: relative;
+  }
+
+  .conn-line {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.12));
+    position: relative;
+  }
+
+  .conn-arrow {
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+
+  .conn-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7.5px;
+    letter-spacing: 0.06em;
+    text-align: center;
+    color: var(--text-dim);
+    opacity: 0.6;
+    line-height: 1.4;
+    position: absolute;
+    bottom: -22px;
+    white-space: nowrap;
+  }
+
+  /* Connector colors */
+  .conn-debate .conn-line { background: linear-gradient(90deg, rgba(224,82,82,0.1), rgba(224,82,82,0.3)); }
+  .conn-debate .conn-arrow { border-left: 6px solid var(--red); }
+
+  .conn-rewrite .conn-line { background: linear-gradient(90deg, rgba(201,146,42,0.1), rgba(201,146,42,0.3)); }
+  .conn-rewrite .conn-arrow { border-left: 6px solid var(--gold); }
+
+  .conn-verify .conn-line { background: linear-gradient(90deg, rgba(42,155,107,0.1), rgba(42,155,107,0.3)); }
+  .conn-verify .conn-arrow { border-left: 6px solid var(--green); }
+
+  /* Footer */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+
+  .footer-note {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-dim);
+    opacity: 0.6;
+    letter-spacing: 0.05em;
+  }
+
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(220,233,246,0.4);
+  }
+
+  .footer-brand em {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    font-style: normal;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">Adversarial Multi-Agent Debate Loop</div>
+      <div class="title">How AuthBridge Eliminates Clinical Loopholes</div>
+      <div class="subtitle">The letter is attacked before the clinician sees it. Every time.</div>
+    </div>
+    <div class="header-badge">
+      <div class="badge-pill teal">Exclusive to Generative AI</div>
+      <div class="badge-pill dim">Rule-based systems cannot do this</div>
+    </div>
+  </div>
+
+  <!-- FLOW -->
+  <div class="flow">
+
+    <!-- AGENT 1: Clinician Agent -->
+    <div class="agent agent-clinician">
+      <div class="agent-header">
+        <div class="agent-icon">
+          <svg viewBox="0 0 16 16" fill="none">
+            <rect x="3" y="2" width="10" height="12" rx="1.5" stroke="#1E9B8A" stroke-width="1.4"/>
+            <path d="M5.5 6h5M5.5 8.5h3.5" stroke="#1E9B8A" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="agent-num">AGENT 01</div>
+          <div class="agent-title">Clinician<br>Agent</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Initial Draft</div>
+        <div class="card-desc">Reads the patient's full FHIR clinical record and the payer's PA criteria. Generates a complete 5-paragraph justification letter grounded in evidence.</div>
+        <div class="card-detail">
+          → Fetches 7+ FHIR resources<br>
+          → Maps criteria → evidence<br>
+          → Scores 0–100 match<br>
+          → Produces draft letter
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 1 -->
+    <div class="connector conn-debate">
+      <div class="conn-line" style="position:relative;">
+        <div class="conn-arrow"></div>
+      </div>
+      <div class="conn-tag">challenges<br>the draft</div>
+    </div>
+
+    <!-- AGENT 2: Payer Denial Agent -->
+    <div class="agent agent-payer">
+      <div class="agent-header">
+        <div class="agent-icon">
+          <svg viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="5.5" stroke="#E05252" stroke-width="1.4"/>
+            <path d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5" stroke="#E05252" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="agent-num">AGENT 02</div>
+          <div class="agent-title">Payer Denial<br>Agent</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Adversarial Attack</div>
+        <div class="card-desc">Assumes the role of a hostile insurance reviewer. Actively searches the draft for unsubstantiated claims, weak evidence links, and clinical loopholes to deny.</div>
+        <div class="card-detail">
+          → Finds unsupported claims<br>
+          → Identifies missing step therapy<br>
+          → Flags weak diagnosis codes<br>
+          → Returns denial objections
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 2 -->
+    <div class="connector conn-rewrite">
+      <div class="conn-line" style="position:relative;">
+        <div class="conn-arrow"></div>
+      </div>
+      <div class="conn-tag">forces<br>rewrite</div>
+    </div>
+
+    <!-- AGENT 3: Revised Letter -->
+    <div class="agent agent-revised">
+      <div class="agent-header">
+        <div class="agent-icon">
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M3 12.5L3 9L9.5 2.5L13.5 6.5L7 13H3.5" stroke="#C9922A" stroke-width="1.4" stroke-linejoin="round"/>
+            <path d="M9.5 2.5L13.5 6.5" stroke="#C9922A" stroke-width="1.4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="agent-num">AGENT 03</div>
+          <div class="agent-title">Clinician Agent<br>Rewrites</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Hardened Letter</div>
+        <div class="card-desc">The Clinician Agent receives the denial objections and must neutralize every one. Rewrites the letter to pre-empt the denial arguments before submission.</div>
+        <div class="card-detail">
+          → Rebuts each objection<br>
+          → Adds missing FHIR citations<br>
+          → Strengthens step therapy proof<br>
+          → Applies CMS urgency header
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 3 -->
+    <div class="connector conn-verify">
+      <div class="conn-line" style="position:relative;">
+        <div class="conn-arrow"></div>
+      </div>
+      <div class="conn-tag">audits<br>output</div>
+    </div>
+
+    <!-- AGENT 4: Verifier Agent -->
+    <div class="agent agent-verifier">
+      <div class="agent-header">
+        <div class="agent-icon">
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M13 4.5L6.5 11L3.5 8" stroke="#2A9B6B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="agent-num">AGENT 04</div>
+          <div class="agent-title">Verifier<br>Agent</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Hallucination Audit</div>
+        <div class="card-desc">Reads the final letter alongside the FHIR evidence trail. Flags any clinical claim not traceable to a real patient resource ID before the physician sees it.</div>
+        <div class="card-detail">
+          → Traces every claim → FHIR ID<br>
+          → Flags ungrounded statements<br>
+          → Outputs verification result<br>
+          → Human reviews and submits
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-note">Human-in-the-loop by design. The physician reviews and submits. AuthBridge does not make clinical decisions.</div>
+    <div class="footer-brand">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M3 13 L3 6 L8 2 L8 6" stroke="#1E9B8A" stroke-width="1.8" stroke-linecap="square" opacity="0.5"/>
+        <path d="M8 2 L13 6 L13 13" stroke="#1E9B8A" stroke-width="1.8" stroke-linecap="square" opacity="0.5"/>
+        <rect x="3" y="9" width="4" height="4" fill="#1E9B8A" opacity="0.3"/>
+      </svg>
+      Auth<em>Bridge</em>
+    </div>
+  </div>
+
+</body>
+</html>

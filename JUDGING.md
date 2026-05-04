@@ -8,7 +8,7 @@
 * **Unified workflow tools eliminate agent chaining failures** - single tool calls provide complete automation with robust error handling and JSON serialization validation.
 * **AI reasoning trace shows decision-making process** - detailed trace of how conclusions were reached.
 
-Maps to: **Dr. Mandel's Language-First Interoperability paradigm**
+Maps to: **Language-First Interoperability** — any LLM with FHIR access can drive the workflow.
 
 ## Potential Impact  
 * Addresses the $31B annual administrative burden of prior authorization.
@@ -19,7 +19,7 @@ Maps to: **Dr. Mandel's Language-First Interoperability paradigm**
 * **Unified workflows improve A2A reliability by eliminating multi-tool chaining failures**.
 * **Live time tracking shows specific efficiency gains** - demonstrates real-world impact beyond static metrics.
 
-Maps to: **Dr. Zheng's ROI framework** and **Joshua Hickey's friction reduction**
+Maps to: **ROI framework** and **friction reduction**
 
 ## Feasibility
 * Built natively on FHIR R4 standard. No custom data contracts required.
@@ -41,16 +41,15 @@ Maps to: **Scalable enterprise healthcare deployment**
 * **Unified workflow tools demonstrate robust design** - single-call automation eliminates agent chaining failures and improves reliability.
 * **Live time metrics and messy data scenarios show maturity** - system acknowledges real-world complexity.
 
-Maps to: **Dr. Proctor's CHIPPER philosophy** (Helpful/Anxiety reduction) and **Dr. Mathur's AI Verification framework** (LLM Self-Auditing/Robust boundaries)
+## Feature Alignment by Criterion
 
-### Judge-Specific Feature Mapping
-
-| Judge | Their focus | AuthBridge Feature |
-|-------|-------------|-------------------|
-| Josh Mandel (Microsoft) | "Write once, run anywhere" | Any FHIR server via `fhir_base_url` parameter (planned) |
-| Alice Zheng (VC) | Market size, defensibility | $1.1B market sizing, open‑standards moat |
-| Dr. Proctor (CHOP) | Patient‑facing tools | Plain‑language patient summary (CHIPPER) |
-| Dr. Mathur (Cleveland Clinic) | AI + human verification | `verify_pa_letter` tool (hallucination audit) |
-| **You (Competition Judges)** | Live time tracking | Real-world efficiency metrics beyond industry averages |
-| **Industry Experts** | Messy data handling | Robust performance with incomplete/uncertain data |
-| **VC Judges** | Regulatory timing | "Why Now" section showing CMS-0057-F compliance readiness |
+| Criterion | AuthBridge Feature |
+|-----------|-------------------|
+| Clinical Safety | Adversarial verifier ensures human physician reviews before submission |
+| AI Factor | `verify_pa_letter` uses hostile-reviewer prompt — AI auditing its own output |
+| Patient-Facing Tooling | Plain-language patient summary reduces patient anxiety (portal-ready) |
+| Interoperability | Any FHIR server via `fhir_base_url` parameter; MCP + A2A + FHIR R4 |
+| Market Size & Defensibility | $1.1B market sizing, open-standards moat, CMS-0057-F regulatory tailwind |
+| Live Efficiency Metrics | Real-world time tracking shows gains beyond industry averages |
+| Messy Data Handling | Robust performance with incomplete/uncertain FHIR records |
+| Regulatory Timing | CMS-0057-F compliance readiness — FHIR PA APIs mandated by Jan 2027 |

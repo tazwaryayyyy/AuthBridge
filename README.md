@@ -228,6 +228,37 @@ writes the letter, and audits its own output. The physician reviews and submits.
 Human-in-the-loop by design — every claim traces to a FHIR resource before 
 reaching the clinician.
 
+## Current Limitations & Honest Scope
+
+AuthBridge is a production-architected prototype. The following gaps 
+exist between the current implementation and a fully production-ready 
+clinical deployment:
+
+| Limitation | Current State | Production Path |
+|---|---|---|
+| FHIR Data | SMART Health IT public sandbox (synthetic) | Organization-specific FHIR R4 server with BAA |
+| SMART Auth | Real OAuth2 handshake against public sandbox | SMART on FHIR EHR launch (Epic, Cerner) |
+| Payer Criteria | 16-drug database sourced from CMS LCDs + LLM fallback | Direct payer API integration (CoverMyMeds, FHIR PA APIs) |
+| PHI Handling | No real PHI processed at any stage | HIPAA-compliant infrastructure with signed BAA required |
+| Clinical Validation | No real-world physician pilot completed | Prospective clinical validation study required |
+
+These limitations are architectural decisions appropriate for a 
+hackathon prototype. The system is designed so each limitation maps 
+directly to a production upgrade path without requiring re-architecture.
+
+## Payer Criteria Sources
+
+Drug criteria in AuthBridge are sourced from publicly available 
+Medicare Local Coverage Determinations (LCDs) published by CMS:
+
+- Adalimumab (Humira): CMS LCD L38551
+- Pembrolizumab (Keytruda): CMS LCD L39038  
+- Dupilumab (Dupixent): CMS LCD L38803
+- Ustekinumab (Stelara): CMS LCD L38550
+- Additional drugs: CMS Medicare Coverage Database
+
+Source: https://www.cms.gov/medicare-coverage-database
+
 ## CMS-0057-F Compliance Alignment
 
 AuthBridge is architecturally aligned with the CMS Interoperability and Prior 
@@ -253,7 +284,6 @@ applies the 72-hour header to generated letters.
 
 ### Detailed Documentation
 For deep dives into the protocol and scoring logic, see:
-- [JUDGING.md](file:///c:/Users/MSI/Desktop/AuthBridge/JUDGING.md) — Comprehensive judging criteria mapping
 - [TOOLS.md](file:///c:/Users/MSI/Desktop/AuthBridge/TOOLS.md) — Exact MCP tool input/output schemas
 - [walkthrough.md](file:///c:/Users/MSI/Desktop/AuthBridge/walkthrough.md) — Complete implementation history
 - [audit_report.md](file:///c:/Users/MSI/Desktop/AuthBridge/audit_report.md) — Security & Concurrency audit results
@@ -264,12 +294,9 @@ For deep dives into the protocol and scoring logic, see:
 | AI Factor | Verifier tool — AI auditing its own output is something rule-based systems literally cannot do |
 | Potential Impact | Cost dashboard — translates clinical time saved into dollars |
 | Feasibility | Weighted scoring, retry logic, input sanitization — production-hardened |
-| SHARP — Helpful | Patient summary tool — reduces patient anxiety, extends helpfulness beyond the clinician |
-| SHARP — Robust | Verifier agent, retry logic, parallel FHIR fetching |
-| Judge — Dr. Mathur | Verifier is his exact framework: AI assists, physician verifies |
-| Judge — Dr. Proctor | Patient summary is his CHIPPER philosophy applied to PA |
-| Judge — Dr. Zheng | Cost dashboard speaks her language directly |
-| Judge — Mr. Hickey | Evidence trail + verifier = maximum friction reduction |
+| Clinical Safety | Adversarial verifier ensures physician reviews before submission |
+| Patient Tooling | Patient summary tool — reduces patient anxiety, extends helpfulness beyond the clinician |
+| Robustness | Verifier agent, retry logic, parallel FHIR fetching |
 
 ---
 

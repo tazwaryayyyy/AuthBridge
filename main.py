@@ -18,6 +18,7 @@ from tools.criteria_tools import ingest_payer_policy as _ingest_payer_policy
 from tools.criteria_tools import score_clinical_match as _score_clinical_match
 from tools.criteria_tools import lookup_pa_criteria as _lookup_pa_criteria
 from tools.fhir_tools import fetch_patient_context as _fetch_patient_context
+from tools.fhir_tools import SMART_FHIR_BASE
 import os
 import logging
 import re
@@ -323,7 +324,6 @@ async def generate_patient_summary(
     """
     Generates a plain-language PA status summary for the patient.
     No clinical jargon, no ICD codes. Designed for patient portal delivery.
-    Based on Dr. Proctor's CHIPPER app philosophy at CHOP.
     """
     return await _generate_patient_summary(drug_name, match_result, patient_context, pa_criteria)
 
@@ -718,6 +718,10 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     host = os.environ.get("HOST", "0.0.0.0")
 
+    logger.info("AuthBridge MCP Server starting with SMART on FHIR integration")
+    logger.info(f"FHIR Base: {SMART_FHIR_BASE}")
+    logger.info(f"Clinical tools: gpt-4o | Utility tools: gpt-4o-mini")
+    logger.info("Payer criteria sourced from CMS LCD database")
     logger.info(f"Starting AuthBridge MCP Server on {host}:{port}")
 
     # Initialize SSE transport

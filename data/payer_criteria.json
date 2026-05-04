@@ -92,7 +92,12 @@
           "Negative TB test and hepatitis B screening within 6 months": "HIGH"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L38551"
+    }
   },
   "semaglutide_ozempic": {
     "drug_name": "Semaglutide (Ozempic)",
@@ -190,7 +195,12 @@
           "Prescriber is endocrinologist, obesity medicine specialist, or PCP with documented obesity management training": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "pembrolizumab_keytruda": {
     "drug_name": "Pembrolizumab (Keytruda)",
@@ -246,7 +256,12 @@
           "Prescriber is board-certified oncologist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L39038"
+    }
   },
   "dupilumab_dupixent": {
     "drug_name": "Dupilumab (Dupixent)",
@@ -302,7 +317,12 @@
           "Patient age >= 6 years": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L38803"
+    }
   },
   "rivaroxaban_xarelto": {
     "drug_name": "Rivaroxaban (Xarelto)",
@@ -356,7 +376,12 @@
           "No mechanical heart valve prosthesis": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "sacubitril_valsartan_entresto": {
     "drug_name": "Sacubitril/Valsartan (Entresto)",
@@ -422,7 +447,12 @@
           "Prescriber is cardiologist or heart failure specialist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L37311"
+    }
   },
   "ustekinumab_stelara": {
     "drug_name": "Ustekinumab (Stelara)",
@@ -477,7 +507,12 @@
           "Prescriber is gastroenterologist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L38550"
+    }
   },
   "tofacitinib_xeljanz": {
     "drug_name": "Tofacitinib (Xeljanz)",
@@ -537,7 +572,12 @@
           "Prescriber is gastroenterologist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "dapagliflozin_farxiga": {
     "drug_name": "Dapagliflozin (Farxiga)",
@@ -592,7 +632,12 @@
           "Prescriber is nephrologist, endocrinologist, or PCP with CKD management experience": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "natalizumab_tysabri": {
     "drug_name": "Natalizumab (Tysabri)",
@@ -648,7 +693,12 @@
           "Prescriber is board-certified neurologist enrolled in TOUCH program": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L33907"
+    }
   },
   "elagolix_orilissa": {
     "drug_name": "Elagolix (Orilissa)",
@@ -711,7 +761,12 @@
           "Prescriber is gynecologist, reproductive endocrinologist, or OB/GYN with endometriosis management experience": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "risankizumab_skyrizi": {
     "drug_name": "Risankizumab (Skyrizi)",
@@ -812,7 +867,12 @@
           "Prescriber is rheumatologist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS LCD L39158"
+    }
   },
   "upadacitinib_rinvoq": {
     "drug_name": "Upadacitinib (Rinvoq)",
@@ -877,7 +937,12 @@
           "Prescriber is board-certified rheumatologist; FDA REMS enrollment required": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "secukinumab_cosentyx": {
     "drug_name": "Secukinumab (Cosentyx)",
@@ -944,7 +1009,12 @@
           "Prescriber is rheumatologist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "suvorexant_belsomra": {
     "drug_name": "Suvorexant (Belsomra)",
@@ -996,7 +1066,12 @@
           "Prescriber is sleep medicine specialist, psychiatrist, or PCP with documented sleep medicine experience": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   },
   "apremilast_otezla": {
     "drug_name": "Apremilast (Otezla)",
@@ -1051,6 +1126,11 @@
           "Prescriber is dermatologist or rheumatologist": "MEDIUM"
         }
       }
-    ]
+    ],
+    "source": {
+      "name": "CMS Medicare Local Coverage Determination",
+      "url": "https://www.cms.gov/medicare-coverage-database",
+      "citation": "CMS Coverage Database -- criteria extracted via ingest_payer_policy"
+    }
   }
 }

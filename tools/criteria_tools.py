@@ -5,6 +5,10 @@ Includes urgency detection (CMS-0057-F 72-hour rule) and FHIR evidence citations
 Updated to use AsyncOpenAI for non-blocking clinical reasoning.
 """
 
+# Clinical documentation tools use gpt-4o. PA letters and scoring
+# affect patient care decisions and require the highest-capability model.
+# Utility tools use gpt-4o-mini for cost efficiency.
+
 import json
 import os
 import logging
@@ -33,9 +37,9 @@ def get_async_client() -> AsyncOpenAI:
     return _client
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=4))
-async def _llm_call(messages, max_tokens=1500, temperature=0.1):
+async def _llm_call(messages, max_tokens=1500, temperature=0.1, model="gpt-4o-mini"):
     return await get_async_client().chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens
@@ -246,6 +250,7 @@ async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None, p
                     matched_indication = ind
                     break
 
+        drug_source = drug_data.get("source", {})
         return {
             "found": True,
             "drug_key": key,
@@ -259,6 +264,8 @@ async def lookup_pa_criteria(drug_name: str, indication: Optional[str] = None, p
             "clinical_guideline": matched_indication.get("clinical_guideline", ""),
             "typical_payers": matched_indication.get("typical_payers", []),
             "source": "authbridge_criteria_database",
+            "source_citation": drug_source.get("citation", "CMS Coverage Database"),
+            "source_url": drug_source.get("url", "https://www.cms.gov/medicare-coverage-database"),
             "criteria_weights": matched_indication.get("criteria_weights", {})
         }
 
@@ -395,7 +402,8 @@ Return ONLY valid JSON:
         response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            max_tokens=1500
+            max_tokens=1500,
+            model="gpt-4o"
         )
         raw = response.choices[0].message.content.strip()
         raw = re.sub(r'^```json\s*', '', raw)
@@ -466,7 +474,8 @@ Return ONLY valid JSON in the following format:
         response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.1,
-            max_tokens=1000
+            max_tokens=1000,
+            model="gpt-4o"
         )
         raw = response.choices[0].message.content.strip()
         raw = re.sub(r'^```json\s*', '', raw)

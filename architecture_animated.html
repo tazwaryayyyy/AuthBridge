@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>AuthBridge Architecture — Animated</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal:       #1E9B8A;
+    --teal-dim:   #166D61;
+    --teal-glow:  rgba(30,155,138,0.18);
+    --navy:       #0A1628;
+    --navy-mid:   #0F1F38;
+    --navy-light: #162845;
+    --slate:      #1E3050;
+    --text:       #E8EFF8;
+    --text-dim:   #7A9BB8;
+    --text-muted: #3D5A7A;
+    --border:     rgba(30,155,138,0.25);
+    --border-dim: rgba(255,255,255,0.06);
+
+    /* Animation timing — all in seconds */
+    --t-header:     0.0s;
+    --t-conn1:      0.55s;
+    --t-platform:   0.75s;
+    --t-conn2:      1.45s;
+    --t-mcp:        1.65s;
+    --t-conn3:      2.35s;
+    --t-data:       2.55s;
+    --t-footer:     3.0s;
+    --t-hold:       3.5s;   /* everything visible — hold begins */
+    --t-fadeout:    6.5s;   /* total before dissolve */
+    --wipe-dur:     0.55s;
+    --fade-dur:     0.28s;
+  }
+
+  body {
+    width: 1200px;
+    height: 800px;
+    overflow: hidden;
+    background: var(--navy);
+    font-family: 'Syne', sans-serif;
+    color: var(--text);
+    position: relative;
+  }
+
+  /* Grid texture */
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(30,155,138,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30,155,138,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Top ambient glow */
+  body::after {
+    content: '';
+    position: absolute;
+    top: -120px; left: 50%;
+    transform: translateX(-50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(30,155,138,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ─── MASTER FADE-OUT ─── */
+  .canvas {
+    position: relative;
+    width: 1200px;
+    height: 800px;
+    padding: 36px 52px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    z-index: 1;
+    animation: masterFadeOut 0.4s ease-in var(--t-fadeout) forwards;
+  }
+
+  @keyframes masterFadeOut {
+    to { opacity: 0; }
+  }
+
+  /* ─── WIPE UTILITY ─── */
+  /* Each section gets clip-path wipe + a very subtle lift */
+  .wipe {
+    animation: wipeReveal var(--wipe-dur) cubic-bezier(0.4,0,0.2,1) both;
+  }
+  @keyframes wipeReveal {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0%   0 0); }
+  }
+
+  /* ─── FADE UTILITY ─── */
+  .fade-in {
+    opacity: 0;
+    animation: fadeIn var(--fade-dur) ease-out both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── HEADER ─── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    animation: wipeReveal var(--wipe-dur) cubic-bezier(0.4,0,0.2,1) var(--t-header) both;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark { width: 28px; height: 28px; }
+
+  .brand-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .brand-name span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 400;
+    color: var(--text-dim);
+  }
+
+  .header-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 3px;
+    background: rgba(30,155,138,0.06);
+  }
+
+  /* ─── LAYERS ─── */
+  .layers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  /* ─── PLATFORM WRAPPER ─── */
+  .platform-wrapper {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(30,155,138,0.04);
+    padding: 14px 18px 18px;
+    position: relative;
+    animation: wipeReveal var(--wipe-dur) cubic-bezier(0.4,0,0.2,1) var(--t-platform) both;
+  }
+
+  .platform-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20px; right: 20px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--teal), transparent);
+    opacity: 0.6;
+  }
+
+  .layer-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .orchestrator {
+    background: var(--navy-mid);
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .orch-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .orch-prompt {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--navy);
+    border: 1px solid var(--border-dim);
+    padding: 5px 10px;
+    border-radius: 4px;
+    flex: 1;
+  }
+  .orch-prompt em { color: var(--teal); font-style: normal; }
+
+  /* Sub-agents stagger in individually */
+  .subagents {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .subagent {
+    background: var(--navy);
+    border: 1px solid var(--border-dim);
+    border-radius: 5px;
+    padding: 9px 11px;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    animation: subagentPop 0.3s ease-out both;
+  }
+  .subagent::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: var(--teal-dim);
+    opacity: 0.5;
+  }
+  @keyframes subagentPop {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Stagger each sub-agent after platform wipes in */
+  .subagent:nth-child(1) { animation-delay: calc(var(--t-platform) + var(--wipe-dur) + 0.00s); }
+  .subagent:nth-child(2) { animation-delay: calc(var(--t-platform) + var(--wipe-dur) + 0.07s); }
+  .subagent:nth-child(3) { animation-delay: calc(var(--t-platform) + var(--wipe-dur) + 0.14s); }
+  .subagent:nth-child(4) { animation-delay: calc(var(--t-platform) + var(--wipe-dur) + 0.21s); }
+
+  .subagent-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--teal);
+    margin-bottom: 3px;
+  }
+  .subagent-name {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .subagent-desc {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  /* ─── CONNECTORS ─── */
+  .connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    position: relative;
+  }
+
+  .connector-line {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--teal-dim), var(--teal));
+    transform-origin: top center;
+    opacity: 0;
+    animation: lineGrow 0.2s ease-out both;
+  }
+  @keyframes lineGrow {
+    from { opacity: 0; transform: translateX(-50%) scaleY(0); }
+    to   { opacity: 1; transform: translateX(-50%) scaleY(1); }
+  }
+
+  .connector-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8.5px;
+    color: var(--teal);
+    background: var(--navy);
+    padding: 1px 8px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    position: relative;
+    z-index: 2;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    animation: fadeIn var(--fade-dur) ease-out both;
+  }
+
+  .arrow-down {
+    position: absolute;
+    left: 50%;
+    bottom: -2px;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--teal);
+    opacity: 0;
+    animation: fadeIn var(--fade-dur) ease-out both;
+  }
+
+  /* Connector 1 timing (between header and platform) */
+  .conn1 .connector-line   { animation-delay: var(--t-conn1); }
+  .conn1 .connector-label  { animation-delay: calc(var(--t-conn1) + 0.1s); }
+  .conn1 .arrow-down       { animation-delay: calc(var(--t-conn1) + 0.1s); }
+
+  /* Connector 2 timing (between platform and MCP) */
+  .conn2 .connector-line   { animation-delay: var(--t-conn2); }
+  .conn2 .connector-label  { animation-delay: calc(var(--t-conn2) + 0.1s); }
+  .conn2 .arrow-down       { animation-delay: calc(var(--t-conn2) + 0.1s); }
+
+  /* Connector 3 timing (between MCP and data) */
+  .conn3 .connector-line   { animation-delay: var(--t-conn3); }
+  .conn3 .arrow-down       { animation-delay: calc(var(--t-conn3) + 0.1s); }
+
+  /* ─── MCP SERVER ─── */
+  .mcp-wrapper {
+    border: 1px solid rgba(30,155,138,0.3);
+    border-radius: 8px;
+    background: rgba(14,27,52,0.8);
+    padding: 14px 18px 14px;
+    position: relative;
+    animation:
+      wipeReveal var(--wipe-dur) cubic-bezier(0.4,0,0.2,1) var(--t-mcp) both,
+      mcpPulse 0.4s ease-in-out calc(var(--t-mcp) + var(--wipe-dur) + 0.05s) both;
+  }
+
+  @keyframes mcpPulse {
+    0%   { transform: scale(1.000); box-shadow: 0 0 0px rgba(30,155,138,0); }
+    50%  { transform: scale(1.008); box-shadow: 0 0 18px rgba(30,155,138,0.22); }
+    100% { transform: scale(1.000); box-shadow: 0 0 0px rgba(30,155,138,0); }
+  }
+
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  /* Tool chips stagger in after MCP wipes */
+  .tool-chip {
+    background: var(--slate);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 7px 8px;
+    text-align: center;
+    opacity: 0;
+    animation: subagentPop 0.25s ease-out both;
+  }
+  .tool-chip:nth-child(1) { animation-delay: calc(var(--t-mcp) + var(--wipe-dur) + 0.00s); }
+  .tool-chip:nth-child(2) { animation-delay: calc(var(--t-mcp) + var(--wipe-dur) + 0.05s); }
+  .tool-chip:nth-child(3) { animation-delay: calc(var(--t-mcp) + var(--wipe-dur) + 0.10s); }
+  .tool-chip:nth-child(4) { animation-delay: calc(var(--t-mcp) + var(--wipe-dur) + 0.15s); }
+  .tool-chip:nth-child(5) { animation-delay: calc(var(--t-mcp) + var(--wipe-dur) + 0.20s); }
+
+  .tool-icon {
+    font-size: 9px;
+    color: var(--teal);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 2px;
+  }
+  .tool-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* ─── DATA SOURCES ─── */
+  .datasources {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    animation: wipeReveal var(--wipe-dur) cubic-bezier(0.4,0,0.2,1) var(--t-data) both;
+  }
+
+  .datasource {
+    border: 1px solid var(--border-dim);
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--navy-mid);
+  }
+
+  .ds-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .ds-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .ds-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+  }
+
+  /* ─── FOOTER BADGES ─── */
+  .footer-badges {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: center;
+  }
+
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    padding: 3px 10px;
+    border-radius: 2px;
+    border: 1px solid var(--border-dim);
+    color: var(--text-muted);
+    opacity: 0;
+    animation: fadeIn 0.2s ease-out both;
+  }
+
+  .badge.active {
+    border-color: var(--border);
+    color: var(--teal);
+    background: rgba(30,155,138,0.05);
+  }
+
+  /* Stagger badges after data layer */
+  .badge:nth-child(1) { animation-delay: calc(var(--t-footer) + 0.00s); }
+  .badge:nth-child(2) { animation-delay: calc(var(--t-footer) + 0.04s); }
+  .badge:nth-child(3) { animation-delay: calc(var(--t-footer) + 0.08s); }
+  .badge:nth-child(4) { animation-delay: calc(var(--t-footer) + 0.12s); }
+  .badge:nth-child(5) { animation-delay: calc(var(--t-footer) + 0.16s); }
+  .badge:nth-child(6) { animation-delay: calc(var(--t-footer) + 0.20s); }
+  .badge:nth-child(7) { animation-delay: calc(var(--t-footer) + 0.26s); }
+
+  /* ─── REPLAY BUTTON (only visible after fade-out) ─── */
+  #replay-btn {
+    position: fixed;
+    bottom: 30px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--teal);
+    border: 1px solid var(--border);
+    background: rgba(10,22,40,0.95);
+    padding: 8px 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 100;
+  }
+  #replay-btn.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+  #replay-btn:hover {
+    background: rgba(30,155,138,0.1);
+  }
+</style>
+</head>
+<body>
+
+<div class="canvas" id="canvas">
+
+  <!-- HEADER — wipes in at t=0 -->
+  <div class="header">
+    <div class="brand">
+      <svg class="logo-mark" viewBox="0 0 28 28" fill="none">
+        <path d="M6 22 L6 10 L13 4 L13 10" stroke="#1E9B8A" stroke-width="2.5" stroke-linecap="square"/>
+        <path d="M13 4 L20 10 L20 22" stroke="#1E9B8A" stroke-width="2.5" stroke-linecap="square"/>
+        <rect x="6" y="16" width="6" height="6" fill="#1E9B8A" opacity="0.7"/>
+      </svg>
+      <div class="brand-name">Auth<span>Bridge</span></div>
+    </div>
+    <div class="header-label">System Architecture · MCP + A2A + FHIR R4</div>
+  </div>
+
+  <div class="layers">
+
+    <!-- PLATFORM — wipes in at t-platform -->
+    <div class="platform-wrapper">
+      <div class="layer-label">Prompt Opinion Platform · A2A Orchestration</div>
+
+      <div class="orchestrator">
+        <div class="orch-title">AuthBridge<br>Orchestrator Agent</div>
+        <div class="orch-prompt">
+          <em>"Prepare PA for patient 592506, drug: Humira"</em>
+        </div>
+      </div>
+
+      <div class="subagents">
+        <div class="subagent">
+          <div class="subagent-num">01</div>
+          <div class="subagent-name">PA Detector<br>Sub-Agent</div>
+          <div class="subagent-desc">Drug + criteria<br>identification</div>
+        </div>
+        <div class="subagent">
+          <div class="subagent-num">02</div>
+          <div class="subagent-name">Evidence<br>Compiler</div>
+          <div class="subagent-desc">FHIR record<br>structuring</div>
+        </div>
+        <div class="subagent">
+          <div class="subagent-num">03</div>
+          <div class="subagent-name">Letter Drafter<br>Sub-Agent</div>
+          <div class="subagent-desc">PA justification<br>generation</div>
+        </div>
+        <div class="subagent">
+          <div class="subagent-num">04</div>
+          <div class="subagent-name">Appeal<br>Sub-Agent</div>
+          <div class="subagent-desc">Denial rebuttal<br>+ peer review</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 1 -->
+    <div class="connector conn1">
+      <div class="connector-line"></div>
+      <div class="connector-label">MCP tool calls</div>
+      <div class="arrow-down"></div>
+    </div>
+
+    <!-- MCP SERVER — wipes in at t-mcp, pulses after -->
+    <div class="mcp-wrapper">
+      <div class="layer-label">AuthBridge MCP Server · Python + FastMCP · Render</div>
+      <div class="tools-grid">
+        <div class="tool-chip">
+          <div class="tool-icon">①</div>
+          <div class="tool-name">fetch_patient_<br>context</div>
+        </div>
+        <div class="tool-chip">
+          <div class="tool-icon">②</div>
+          <div class="tool-name">lookup_pa_<br>criteria</div>
+        </div>
+        <div class="tool-chip">
+          <div class="tool-icon">③</div>
+          <div class="tool-name">score_clinical_<br>match</div>
+        </div>
+        <div class="tool-chip">
+          <div class="tool-icon">④</div>
+          <div class="tool-name">draft_pa_<br>letter</div>
+        </div>
+        <div class="tool-chip">
+          <div class="tool-icon">⑤</div>
+          <div class="tool-name">draft_appeal_<br>letter</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECTOR 2 -->
+    <div class="connector conn2" style="height:14px;">
+      <div class="connector-line" style="background:linear-gradient(180deg,rgba(30,155,138,0.5),rgba(30,155,138,0.3));"></div>
+      <div class="connector-label" style="display:none;"></div><!-- no label on this one -->
+      <div class="arrow-down" style="border-top-color:rgba(30,155,138,0.4);"></div>
+    </div>
+
+    <!-- DATA SOURCES — wipe in at t-data -->
+    <div class="datasources">
+      <div class="datasource">
+        <div class="ds-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="3"  width="12" height="2.5" rx="1" fill="#1E9B8A" opacity="0.8"/>
+            <rect x="2" y="7"  width="12" height="2.5" rx="1" fill="#1E9B8A" opacity="0.5"/>
+            <rect x="2" y="11" width="7"  height="2.5" rx="1" fill="#1E9B8A" opacity="0.3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="ds-name">HAPI FHIR R4 Sandbox</div>
+          <div class="ds-sub">Conditions · Medications · Labs · Procedures · asyncio.gather parallel fetch</div>
+        </div>
+      </div>
+      <div class="datasource">
+        <div class="ds-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="5.5" stroke="#1E9B8A" stroke-width="1.5" opacity="0.7"/>
+            <path d="M5 8 Q8 5 11 8 Q8 11 5 8Z" fill="#1E9B8A" opacity="0.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="ds-name">GitHub Models · GPT-4o mini</div>
+          <div class="ds-sub">AsyncOpenAI · Tenacity retries · Semaphore throttling</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FOOTER BADGES -->
+  <div class="footer-badges">
+    <div class="badge active">MCP</div>
+    <div class="badge active">A2A</div>
+    <div class="badge active">FHIR R4</div>
+    <div class="badge active">SHARP</div>
+    <div class="badge active">USCDI v1.1</div>
+    <div class="badge active">CMS-0057-F</div>
+    <div class="badge">SYNTHETIC DATA ONLY</div>
+  </div>
+
+</div><!-- /canvas -->
+
+<button id="replay-btn">↺ REPLAY</button>
+
+<script>
+  const FADE_OUT_START = 6.5; // seconds, matches --t-fadeout in CSS
+  const FADE_OUT_DUR   = 0.4;
+
+  const btn = document.getElementById('replay-btn');
+  const canvas = document.getElementById('canvas');
+
+  // Show replay button after animation completes
+  setTimeout(() => {
+    btn.classList.add('visible');
+  }, (FADE_OUT_START + FADE_OUT_DUR + 0.2) * 1000);
+
+  btn.addEventListener('click', () => {
+    btn.classList.remove('visible');
+    // Force re-trigger by cloning the node
+    const clone = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(clone, canvas);
+
+    // Re-grab and reset replay button timing
+    setTimeout(() => {
+      btn.classList.add('visible');
+    }, (FADE_OUT_START + FADE_OUT_DUR + 0.2) * 1000);
+  });
+</script>
+
+</body>
+</html>

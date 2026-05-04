@@ -5,6 +5,10 @@ Includes CMS-0057-F urgency headers and FHIR evidence trail integration.
 Updated for non-blocking AsyncOpenAI performance.
 """
 
+# Clinical documentation tools use gpt-4o. PA letters and scoring
+# affect patient care decisions and require the highest-capability model.
+# Utility tools use gpt-4o-mini for cost efficiency.
+
 import json
 import os
 import re
@@ -21,9 +25,9 @@ logger = logging.getLogger(__name__)
 _client: Optional[AsyncOpenAI] = None
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=4))
-async def _llm_call(messages, max_tokens=1500, temperature=0.1):
+async def _llm_call(messages, max_tokens=1500, temperature=0.1, model="gpt-4o-mini"):
     return await get_async_client().chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens
@@ -163,13 +167,16 @@ Write a 5-paragraph justification letter:
 
 CRITICAL: DO NOT invent, hallucinate, or assume any clinical data. You MUST strictly use ONLY the provided FHIR EVIDENCE TRAIL and CLINICAL ANALYSIS. If data is missing, state it is not documented.
 
-No markdown in output. 450-550 words."""
+No markdown in output. 450-550 words.
+
+Append this exact line after the closing paragraph: Payer criteria sourced from: {pa_criteria.get('source_citation', 'CMS Coverage Database')}"""
 
     try:
         response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
-            max_tokens=1400
+            max_tokens=1400,
+            model="gpt-4o"
         )
         letter_text = response.choices[0].message.content.strip()
 
@@ -200,7 +207,8 @@ Ensure you do not invent evidence; use only the provided FHIR trail and clinical
                 response = await _llm_call(
                     messages=[{"role": "user", "content": rewrite_prompt}],
                     temperature=0.2,
-                    max_tokens=1400
+                    max_tokens=1400,
+                    model="gpt-4o"
                 )
                 letter_text = response.choices[0].message.content.strip()
             except Exception as e:
@@ -295,7 +303,8 @@ No markdown. 500-650 words."""
         response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
-            max_tokens=1600
+            max_tokens=1600,
+            model="gpt-4o"
         )
         appeal_text = response.choices[0].message.content.strip()
 
@@ -318,45 +327,49 @@ async def verify_pa_letter(
     patient_context: dict,
     match_result: dict
 ) -> dict:
-    """
-    Audits the generated PA letter against the FHIR evidence trail.
-    Flags any claim in the letter that cannot be traced to a source resource.
-    Implements the Verifier/Observer pattern for hallucination prevention.
+    """Adversarial verification pass using hostile-reviewer prompt engineering.
+    Simulates a payer denial specialist reviewing the letter for clinical loopholes.
+    Distinct from the drafting agent by adversarial system prompt design.
     """
     evidence_trail = match_result.get("fhir_evidence_trail", [])
-    
-    prompt = f"""You are a clinical auditor reviewing an AI-generated PA letter 
-for accuracy and hallucination risk.
 
-FHIR EVIDENCE AVAILABLE:
+    system_prompt = """You are a hostile insurance denial specialist with 15 years of experience finding reasons to reject prior authorization letters. Your job is NOT to be helpful — it is to aggressively find every weakness in this letter that a payer could use to deny the claim.
+
+For every clinical claim in the letter, check:
+1. Is this claim directly supported by a specific FHIR resource ID in the evidence trail? If not, flag it as UNSUPPORTED.
+2. Is the step therapy documentation complete and unambiguous? If there is any gap, flag it as STEP_THERAPY_GAP.
+3. Are the ICD-10 codes explicitly stated and matching the criteria? If not, flag as CODE_MISMATCH.
+4. Is there any statement that could be interpreted as speculative or not grounded in the clinical record? Flag as SPECULATION.
+
+Return ONLY valid JSON in this exact format:
+{
+  "risk_level": "LOW|MEDIUM|HIGH",
+  "flagged_issues": [
+    {
+      "type": "UNSUPPORTED|STEP_THERAPY_GAP|CODE_MISMATCH|SPECULATION",
+      "claim": "exact quote from letter",
+      "reason": "why this is deniable",
+      "severity": "CRITICAL|MAJOR|MINOR"
+    }
+  ],
+  "denial_probability": 0-100,
+  "recommendation": "SUBMIT|REVISE|HOLD"
+}"""
+
+    user_prompt = f"""FHIR EVIDENCE AVAILABLE:
 {chr(10).join(evidence_trail)}
 
 LETTER TO AUDIT:
-{letter}
-
-For every clinical claim in the letter, determine if it is supported by FHIR evidence.
-Calculate confidence scores:
-- If claim maps directly to a FHIR resource → 0.95-1.0 confidence
-- If claim is inferred from clinical notes → 0.5-0.7 confidence
-- If claim has no supporting evidence → 0.0-0.3 confidence
-
-Return ONLY valid JSON:
-{{
-  "verified_claims_with_confidence": [
-    {{"claim": "<claim>", "confidence": <0.0-1.0>, "evidence": "<FHIR resource>"}}
-  ],
-  "unverified_claims": [
-    {{"claim": "<claim>", "confidence": <0.0-1.0>, "reason": "No FHIR support found"}}
-  ],
-  "hallucination_risk": "<LOW|MEDIUM|HIGH>",
-  "overall_verdict": "<VERIFIED|NEEDS_REVIEW|REJECT>",
-  "auditor_notes": "<1-2 sentence summary>"
-}}"""
+{letter}"""
 
     response = await _llm_call(
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
         temperature=0.0,
-        max_tokens=800
+        max_tokens=1000,
+        model="gpt-4o"
     )
     raw = response.choices[0].message.content.strip()
     raw = re.sub(r'^```json\s*', '', raw)
@@ -366,10 +379,10 @@ Return ONLY valid JSON:
     except json.JSONDecodeError:
         logger.error(f"Failed to parse verify_pa_letter JSON: {raw[:100]}")
         return {
-            "verified_claims": [],
-            "unverified_claims": [],
-            "hallucination_risk": "HIGH",
-            "overall_verdict": "ERROR",
+            "risk_level": "HIGH",
+            "flagged_issues": [],
+            "denial_probability": 50,
+            "recommendation": "REVISE",
             "auditor_notes": "LLM output formatting error."
         }
 
