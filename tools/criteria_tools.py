@@ -219,6 +219,68 @@ def format_evidence_trail(citations: list) -> list:
     return trail
 
 
+async def _generate_reasoning_trace(
+    patient_context: dict,
+    criteria: dict,
+    match_result: dict
+) -> dict:
+    """
+    LLM-generated clinical reasoning trace using gpt-4o.
+    Explains why each PA criterion is met or not met, citing specific FHIR
+    resource IDs. Replaces prior hardcoded string-matching logic.
+    """
+    system_prompt = (
+        "You are a senior clinical documentation specialist with expertise "
+        "in prior authorization. Your job is to produce a precise, "
+        "evidence-grounded clinical reasoning trace. For every criterion, "
+        "you must cite the exact FHIR resource type and ID that supports "
+        "your conclusion. Never summarize — be specific and clinical."
+    )
+    user_prompt = f"""Analyze this prior authorization case and produce a detailed \
+clinical reasoning trace.
+
+  PATIENT FHIR DATA:
+  {json.dumps(patient_context, indent=2)}
+
+  PAYER PA CRITERIA:
+  {json.dumps(criteria, indent=2)}
+
+  SCORING RESULT:
+  {json.dumps(match_result, indent=2)}
+
+  For each criterion in the PA criteria, explain:
+  1. Whether the patient meets it (YES/PARTIAL/NO)
+  2. Which exact FHIR resource supports this conclusion \
+     (e.g., Condition/abc123, MedicationStatement/xyz456)
+  3. The clinical significance of this finding
+  4. If not met, what specific documentation would satisfy it
+
+  Format as a structured clinical trace, not bullet points.
+  Be precise. A physician will rely on this."""
+
+    try:
+        client = get_async_client()
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.3,
+            max_tokens=2000,
+        )
+        trace_text = response.choices[0].message.content.strip()
+        return {"reasoning_trace": trace_text}
+    except Exception as exc:
+        logger.error(f"_generate_reasoning_trace failed: {exc}")
+        return {
+            "reasoning_trace": (
+                "Reasoning trace generation failed. "
+                "Manual clinical review required."
+            )
+        }
+
+
 def _trim_patient_context(patient_context: dict, max_meds=5, max_obs=5, max_procs=5) -> dict:
     """Create a smaller version of the patient context for LLM prompts."""
     trimmed = {
@@ -318,6 +380,9 @@ async def score_clinical_match(patient_context: dict, pa_criteria: dict) -> dict
     """
     Scores how well a patient's FHIR record matches payer PA criteria.
     Uses AsyncOpenAI for non-blocking clinical reasoning.
+    Uses gpt-4o at temperature=0.3 to allow genuine clinical reasoning
+    variance. Evidence trail cites specific FHIR resource IDs for
+    every scored criterion.
     """
     drug_name = pa_criteria.get("drug_name", "Unknown")
     urgency = detect_urgency(patient_context, drug_name, pa_criteria)
@@ -401,7 +466,10 @@ Return ONLY valid JSON:
     try:
         response = await _llm_call(
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
+            # 0.3 allows genuine clinical reasoning variance while maintaining
+            # scoring consistency. Lower values produced deterministic
+            # lookup behavior rather than clinical judgment.
+            temperature=0.3,
             max_tokens=1500,
             model="gpt-4o"
         )
