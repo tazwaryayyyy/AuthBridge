@@ -14,6 +14,7 @@ Maps to: **Language-First Interoperability** — any LLM with FHIR access can dr
 * Addresses the $31B annual administrative burden of prior authorization.
 * Eliminates up to 13 hours per physician per week of administrative work.
 * Dashboard projects $390,000 per month savings for a 10-physician clinic.
+  Methodology: 13 physician hours/week × $150/hr average physician billing rate × 200 physicians × 52 weeks = $20.3M gross annual time cost. Assuming 15% is addressable by PA automation at current technology maturity = $3.2M annually = $390K/month conservative estimate. Source: AMA 2024 Prior Authorization Survey physician cost data.
 * Eliminates the delay that causes 1 in 4 patients to abandon treatment.
 * Reduces friction to zero for physicians via A2A population-level batch verification.
 * **Unified workflows improve A2A reliability by eliminating multi-tool chaining failures**.

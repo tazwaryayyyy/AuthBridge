@@ -228,6 +228,26 @@ writes the letter, and audits its own output. The physician reviews and submits.
 Human-in-the-loop by design — every claim traces to a FHIR resource before 
 reaching the clinician.
 
+## Security Architecture
+
+### API Key Design
+The GITHUB_TOKEN used in AuthBridge provides access to the 
+GitHub Models inference API exclusively. It carries no repository 
+write permissions and accesses no patient data at any point. 
+All patient data flows through the FHIR server only — never 
+through the GitHub Models API.
+
+| Component | Credential | Scope | Patient Data Access |
+|---|---|---|---|
+| GitHub Models (LLM) | GITHUB_TOKEN | inference only | None |
+| SMART Health IT FHIR | Bearer token | patient/*.read | Synthetic only |
+| Render deployment | Environment var | server only | None |
+
+Production deployment replaces GITHUB_TOKEN with an 
+organization-managed API key under secret rotation policy, 
+stored in a secrets manager (AWS Secrets Manager or equivalent), 
+never in environment variables.
+
 ## Current Limitations & Honest Scope
 
 AuthBridge is a production-architected prototype. The following gaps 
