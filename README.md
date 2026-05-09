@@ -105,7 +105,7 @@ Drafts complete PA justification letter  ←── < 30 seconds total
                    │               │
         ┌───────────▼──┐    ┌───────▼──────────┐
         │  HAPI FHIR   │    │  GitHub Models   │
-        │  R4 Sandbox  │    │  GPT-4o-mini     │
+        │  R4 Sandbox  │    │  GPT-4o & mini   │
         │  (synthetic) │    │  (OpenAI SDK)    │
         └──────────────┘    └──────────────────┘
 ```
@@ -521,7 +521,7 @@ authbridge-mcp/
 | Component | Technology |
 |-----------|-----------|
 | MCP Server | Python + FastMCP |
-| LLM | OpenAI (GitHub Models) — GPT-4o-mini |
+| LLM | OpenAI (GitHub Models) — GPT-4o & GPT-4o-mini |
 | FHIR Integration | HAPI FHIR R4 (httpx) |
 | Deployment | Render (free tier) |
 | Platform | Prompt Opinion (MCP + A2A) |
@@ -540,6 +540,17 @@ AuthBridge delivers all five output tiers defined by the Prompt Opinion 5Ts fram
 | **Table** | Structured data | match_result surfaces criteria as structured matched/missing tables |
 | **Transaction** | Actions | Initiates the PA submission workflow through the platform |
 | **Task** | Follow-up items | missing_criteria list creates actionable documentation tasks for clinicians |
+
+---
+
+## Clinical Review
+
+Reviewed by Dr. Gokul Sampathkumar, Prior Authorization 
+Certified Specialist, Staffingly Inc.
+
+> "The content covers the crucial aspects. Change in 
+> template/structure can make it easier for the medical 
+> review team to scan and approve."
 
 ---
 

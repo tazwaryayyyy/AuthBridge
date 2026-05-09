@@ -7,8 +7,9 @@ import asyncio
 import httpx
 import time
 import sys
+import os
 
-BASE_URL = "http://localhost:10000/api/run-pa"
+BASE_URL = os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:10000") + "/api/run-pa"
 CONCURRENT_REQUESTS = 15
 
 # Mix of valid payload scenarios based on demo scripts
