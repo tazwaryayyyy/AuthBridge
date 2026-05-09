@@ -390,7 +390,7 @@ AuthBridge is ready to deploy on Render's free tier.
 5. Add environment variable: `GITHUB_TOKEN`
 6. Deploy
 
-Your MCP server URL: `https://authbridge-mcp.onrender.com/sse`
+Your MCP server URL: `https://authbridge-t42x.onrender.com/sse`
 > [!TIP]
 > The server exposes a `/health` endpoint for uptime monitoring and Render health checks.
 

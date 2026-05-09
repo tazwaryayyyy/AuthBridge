@@ -8,12 +8,12 @@ Step-by-step instructions to register AuthBridge in the Prompt Opinion platform.
 
 Deploy to Render first (see README.md). Your MCP server URL will be:
 ```
-https://authbridge-mcp.onrender.com
+https://authbridge-t42x.onrender.com
 ```
 
 The server exposes an SSE endpoint at:
 ```
-https://authbridge-mcp.onrender.com/sse
+https://authbridge-t42x.onrender.com/sse
 ```
 
 ---
@@ -27,7 +27,7 @@ https://authbridge-mcp.onrender.com/sse
 | Field | Value |
 |-------|-------|
 | **Name** | AuthBridge |
-| **Server URL** | `https://authbridge-mcp.onrender.com/sse` |
+| **Server URL** | `https://authbridge-t42x.onrender.com/sse` |
 | **Transport** | SSE |
 | **Description** | FHIR-native prior authorization intelligence agent. Reads patient FHIR records, matches payer criteria, scores clinical evidence, and drafts complete PA justification and appeal letters. |
 | **Tags** | `prior-authorization`, `FHIR`, `medication`, `clinical-documentation`, `PA`, `biologic` |
