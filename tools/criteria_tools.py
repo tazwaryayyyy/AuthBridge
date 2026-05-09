@@ -50,8 +50,12 @@ def _load_criteria() -> dict:
     global _criteria_db
     if _criteria_db is None:
         criteria_path = Path(__file__).parent.parent / "data" / "payer_criteria.json"
-        with open(criteria_path, "r") as f:
-            _criteria_db = json.load(f)
+        try:
+            with open(criteria_path, "r") as f:
+                _criteria_db = json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load criteria database: {e}")
+            _criteria_db = {}
     return _criteria_db
 
 
@@ -259,15 +263,14 @@ clinical reasoning trace.
   Be precise. A physician will rely on this."""
 
     try:
-        client = get_async_client()
-        response = await client.chat.completions.create(
-            model="gpt-4o",
+        response = await _llm_call(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
             max_tokens=2000,
+            model="gpt-4o"
         )
         trace_text = response.choices[0].message.content.strip()
         return {"reasoning_trace": trace_text}
@@ -549,7 +552,10 @@ Return ONLY valid JSON in the following format:
         raw = re.sub(r'^```json\s*', '', raw)
         raw = re.sub(r'\s*```$', '', raw)
         
-        extracted_data = json.loads(raw)
+        try:
+            extracted_data = json.loads(raw)
+        except json.JSONDecodeError:
+            return {"success": False, "error": "LLM returned invalid JSON"}
         
         # Add to local DB
         drug_name = extracted_data.get("drug_name", "Unknown_Drug")

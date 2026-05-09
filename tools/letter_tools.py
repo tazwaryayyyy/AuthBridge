@@ -362,28 +362,38 @@ Return ONLY valid JSON in this exact format:
 LETTER TO AUDIT:
 {letter}"""
 
-    response = await _llm_call(
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.0,
-        max_tokens=1000,
-        model="gpt-4o"
-    )
-    raw = response.choices[0].message.content.strip()
-    raw = re.sub(r'^```json\s*', '', raw)
-    raw = re.sub(r'\s*```$', '', raw)
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        logger.error(f"Failed to parse verify_pa_letter JSON: {raw[:100]}")
+        response = await _llm_call(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+            max_tokens=1000,
+            model="gpt-4o"
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'^```json\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse verify_pa_letter JSON: {raw[:100]}")
+            return {
+                "risk_level": "HIGH",
+                "flagged_issues": [],
+                "denial_probability": 50,
+                "recommendation": "REVISE",
+                "auditor_notes": "LLM output formatting error."
+            }
+    except Exception as e:
+        logger.error(f"Verification failed: {e}")
         return {
             "risk_level": "HIGH",
             "flagged_issues": [],
             "denial_probability": 50,
             "recommendation": "REVISE",
-            "auditor_notes": "LLM output formatting error."
+            "auditor_notes": f"Verification failed due to error: {e}"
         }
 
 
@@ -429,18 +439,27 @@ Return ONLY valid JSON:
   "contact_note": "Contact your doctor's office if you have questions or if you haven't heard back within the expected timeframe."
 }}"""
 
-    response = await _llm_call(
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=400
-    )
-    raw = response.choices[0].message.content.strip()
-    raw = re.sub(r'^```json\s*', '', raw)
-    raw = re.sub(r'\s*```$', '', raw)
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        logger.error(f"Failed to parse patient_summary JSON: {raw[:100]}")
+        response = await _llm_call(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=400
+        )
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r'^```json\s*', '', raw)
+        raw = re.sub(r'\s*```$', '', raw)
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse patient_summary JSON: {raw[:100]}")
+            return {
+                "summary": "We encountered an error generating your plain language summary. Your clinical notes are being processed.",
+                "next_step": "None",
+                "expected_timeline": "Unknown",
+                "contact_note": "Contact your doctor's office if you have questions."
+            }
+    except Exception as e:
+        logger.error(f"Patient summary failed: {e}")
         return {
             "summary": "We encountered an error generating your plain language summary. Your clinical notes are being processed.",
             "next_step": "None",

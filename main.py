@@ -17,6 +17,7 @@ from tools.letter_tools import draft_pa_letter as _draft_pa_letter
 from tools.criteria_tools import ingest_payer_policy as _ingest_payer_policy
 from tools.criteria_tools import score_clinical_match as _score_clinical_match
 from tools.criteria_tools import lookup_pa_criteria as _lookup_pa_criteria
+from tools.criteria_tools import _generate_reasoning_trace
 from tools.fhir_tools import fetch_patient_context as _fetch_patient_context
 from tools.fhir_tools import SMART_FHIR_BASE
 import os
@@ -62,51 +63,7 @@ def _ensure_json_serializable(obj: Any) -> Any:
         return obj
 
 
-def _generate_reasoning_trace(match_result: dict, patient_context: dict, pa_criteria: dict) -> list:
-    """Generate detailed reasoning trace showing how AI arrived at its decision"""
-    trace = []
 
-    # Analyze matched criteria
-    for criterion in match_result.get("matched_criteria", []):
-        evidence = []
-        if "methotrexate" in criterion.lower() and "medication_history" in patient_context:
-            for med in patient_context.get("medication_history", []):
-                if "methotrexate" in med.get("drug", "").lower():
-                    evidence.append(
-                        f"MedicationStatement/{med.get('id', 'unknown')} — {med.get('drug', 'Unknown')} documented failure")
-                    break
-        elif "crohn" in criterion.lower() and "conditions" in patient_context:
-            for condition in patient_context.get("conditions", []):
-                if "K50" in condition.get("code", ""):
-                    evidence.append(
-                        f"Condition/{condition.get('id', 'unknown')} — {condition.get('display', 'Unknown')} confirmed on {condition.get('date_recorded', 'unknown')}")
-                    break
-
-        if evidence:
-            trace.append(
-                f"Matched: {criterion} — Evidence: {'; '.join(evidence)}")
-
-    # Analyze missing criteria
-    for criterion in match_result.get("missing_criteria", []):
-        if "tnf inhibitor" in criterion.lower():
-            trace.append(
-                f"Missing: TNF inhibitor trial — No documented biologic therapy in patient history")
-        elif "hepatitis screening" in criterion.lower():
-            trace.append(
-                f"Missing: Hepatitis screening — No recent Observation resources for hepatitis B/C status")
-
-    # Add conclusion
-    score = match_result.get("score", 0)
-    if score >= 80:
-        conclusion = "Conclusion: Strong clinical evidence supports approval"
-    elif score >= 60:
-        conclusion = "Conclusion: Moderate evidence, consider additional documentation"
-    else:
-        conclusion = f"Conclusion: Low evidence score ({score}) — Significant criteria gaps identified"
-
-    trace.append(conclusion)
-
-    return trace
 
 
 # Load environment variables
@@ -355,68 +312,67 @@ async def run_full_pa_workflow(
         prescriber_phone: Direct phone for peer-to-peer review (optional)
         practice_name: Practice or health system name (optional)
     """
-    if not patient_id or not patient_id.strip():
-        return {"error": "patient_id is required", "status": "missing_input"}
-    if not drug_name or not drug_name.strip():
-        return {"error": "drug_name is required", "status": "missing_input"}
-    _validate_patient_id(patient_id)
-    logger.info(
-        f"Running full PA workflow: patient={patient_id}, drug={drug_name}")
-
-    # Step 1: FHIR
-    patient_context = await _fetch_patient_context(patient_id)
-
-    # Step 2: Criteria
-    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
-
-    # Step 3: Score
-    match_result = await _score_clinical_match(patient_context, pa_criteria)
-
-    # Step 4: Letter
-    letter_result = await _draft_pa_letter(
-        drug_name=pa_criteria.get("drug_name", drug_name),
-        pa_criteria=pa_criteria,
-        match_result=match_result,
-        patient_context=patient_context,
-        prescriber_name=prescriber_name,
-        prescriber_npi=prescriber_npi,
-        prescriber_specialty=prescriber_specialty,
-        prescriber_phone=prescriber_phone,
-        practice_name=practice_name
-    )
-
-    # Step 5: Verify
-    verify_result = {}
-    if letter_result.get("success") and letter_result.get("letter"):
-        try:
-            verify_result = await _verify_pa_letter(
-                letter=letter_result["letter"],
-                patient_context=patient_context,
-                match_result=match_result
-            )
-        except Exception as e:
-            verify_result = {"error": str(e)}
-
-    # Step 6: Patient summary
-    summary_result = {}
     try:
-        summary_result = await _generate_patient_summary(
+        if not patient_id or not patient_id.strip():
+            return {"error": "patient_id is required", "status": "missing_input"}
+        if not drug_name or not drug_name.strip():
+            return {"error": "drug_name is required", "status": "missing_input"}
+        _validate_patient_id(patient_id)
+        logger.info(
+            f"Running full PA workflow: patient={patient_id}, drug={drug_name}")
+
+        # Step 1: FHIR
+        patient_context = await _fetch_patient_context(patient_id)
+
+        # Step 2: Criteria
+        pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
+
+        # Step 3: Score
+        match_result = await _score_clinical_match(patient_context, pa_criteria)
+
+        # Step 4: Letter
+        letter_result = await _draft_pa_letter(
             drug_name=pa_criteria.get("drug_name", drug_name),
+            pa_criteria=pa_criteria,
             match_result=match_result,
             patient_context=patient_context,
-            pa_criteria=pa_criteria
+            prescriber_name=prescriber_name,
+            prescriber_npi=prescriber_npi,
+            prescriber_specialty=prescriber_specialty,
+            prescriber_phone=prescriber_phone,
+            practice_name=practice_name
         )
-    except Exception as e:
-        summary_result = {"error": str(e)}
 
-    urgency = match_result.get("urgency", {})
-    _metrics["total_pa_letters"] += 1
-    if urgency.get("is_urgent"):
-        _metrics["urgent_cases"] += 1
-    if match_result.get("recommendation") in ("APPROVE", "LIKELY_APPROVE"):
-        _metrics["approve_count"] += 1
+        # Step 5: Verify
+        verify_result = {}
+        if letter_result.get("success") and letter_result.get("letter"):
+            try:
+                verify_result = await _verify_pa_letter(
+                    letter=letter_result["letter"],
+                    patient_context=patient_context,
+                    match_result=match_result
+                )
+            except Exception as e:
+                verify_result = {"error": str(e)}
 
-    try:
+        # Step 6: Patient summary
+        summary_result = {}
+        try:
+            summary_result = await _generate_patient_summary(
+                drug_name=pa_criteria.get("drug_name", drug_name),
+                match_result=match_result,
+                patient_context=patient_context,
+                pa_criteria=pa_criteria
+            )
+        except Exception as e:
+            summary_result = {"error": str(e)}
+
+        urgency = match_result.get("urgency", {})
+        _metrics["total_pa_letters"] += 1
+        if urgency.get("is_urgent"):
+            _metrics["urgent_cases"] += 1
+        if match_result.get("recommendation") in ("APPROVE", "LIKELY_APPROVE"):
+            _metrics["approve_count"] += 1
         result = {
             "patient": patient_context.get("patient_info", {}).get("name", "Unknown"),
             "drug": pa_criteria.get("drug_name", drug_name),
@@ -437,7 +393,7 @@ async def run_full_pa_workflow(
             "patient_summary": summary_result.get("summary", ""),
             "patient_next_step": summary_result.get("next_step", ""),
             "hallucination_risk": verify_result.get("hallucination_risk", "UNKNOWN"),
-            "reasoning_trace": _generate_reasoning_trace(match_result, patient_context, pa_criteria),
+            "reasoning_trace": (await _generate_reasoning_trace(patient_context, pa_criteria, match_result)).get("reasoning_trace", ""),
             "workflow_steps_completed": 6
         }
 
@@ -477,28 +433,27 @@ async def run_full_appeal_workflow(
     Runs the complete appeal letter workflow in a single call.
     Fetches FHIR patient context, looks up payer criteria, then drafts a formal appeal.
     """
-    if not patient_id or not patient_id.strip():
-        return {"error": "patient_id is required", "status": "missing_input"}
-    if not drug_name or not drug_name.strip():
-        return {"error": "drug_name is required", "status": "missing_input"}
-    if not denial_reason or not denial_reason.strip():
-        return {"error": "denial_reason is required", "status": "missing_input"}
-    _validate_patient_id(patient_id)
-    patient_context = await _fetch_patient_context(patient_id)
-    pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
-    appeal_result = await _draft_appeal_letter(
-        drug_name=drug_name,
-        denial_reason=denial_reason,
-        patient_context=patient_context,
-        pa_criteria=pa_criteria,
-        prescriber_name=prescriber_name,
-        prescriber_npi=prescriber_npi,
-        prescriber_specialty=prescriber_specialty,
-        prescriber_phone=prescriber_phone,
-        practice_name=practice_name
-    )
-
     try:
+        if not patient_id or not patient_id.strip():
+            return {"error": "patient_id is required", "status": "missing_input"}
+        if not drug_name or not drug_name.strip():
+            return {"error": "drug_name is required", "status": "missing_input"}
+        if not denial_reason or not denial_reason.strip():
+            return {"error": "denial_reason is required", "status": "missing_input"}
+        _validate_patient_id(patient_id)
+        patient_context = await _fetch_patient_context(patient_id)
+        pa_criteria = await _lookup_pa_criteria(drug_name, payer=payer or None)
+        appeal_result = await _draft_appeal_letter(
+            drug_name=drug_name,
+            denial_reason=denial_reason,
+            patient_context=patient_context,
+            pa_criteria=pa_criteria,
+            prescriber_name=prescriber_name,
+            prescriber_npi=prescriber_npi,
+            prescriber_specialty=prescriber_specialty,
+            prescriber_phone=prescriber_phone,
+            practice_name=practice_name
+        )
         logger.info(
             f"Successfully created result for appeal workflow: patient={patient_id}, drug={drug_name}")
 
@@ -537,87 +492,91 @@ async def simulate_pa_lifecycle(
     Simulates the complete PA lifecycle from submission to final resolution.
     Returns a timeline of events showing the full prior authorization journey.
     """
-    _validate_patient_id(patient_id)
+    try:
+        _validate_patient_id(patient_id)
 
-    timeline = []
+        timeline = []
 
-    # Day 0: Initial PA submission
-    timeline.append({
-        "day": 0,
-        "event": "PA submitted",
-        "status": "pending",
-        "description": f"Prior authorization request submitted for {drug_name}"
-    })
-
-    # Run the full PA workflow
-    pa_result = await run_full_pa_workflow(
-        patient_id=patient_id,
-        drug_name=drug_name,
-        prescriber_name=prescriber_name,
-        prescriber_npi=prescriber_npi,
-        prescriber_specialty=prescriber_specialty,
-        prescriber_phone=prescriber_phone,
-        practice_name=practice_name,
-        payer=payer
-    )
-
-    # Day 1: Decision based on scoring
-    if pa_result.get("recommendation") in ["APPROVE", "LIKELY_APPROVE"]:
+        # Day 0: Initial PA submission
         timeline.append({
-            "day": 1,
-            "event": "Approved - criteria met",
-            "status": "approved",
-            "description": f"PA for {drug_name} approved without delay"
-        })
-        final_outcome = "approved"
-    else:
-        timeline.append({
-            "day": 1,
-            "event": f"Denied - {pa_result.get('missing_criteria', ['criteria not met'])[0] if pa_result.get('missing_criteria') else 'criteria not met'}",
-            "status": "denied",
-            "description": f"PA for {drug_name} denied"
+            "day": 0,
+            "event": "PA submitted",
+            "status": "pending",
+            "description": f"Prior authorization request submitted for {drug_name}"
         })
 
-        # Day 1: Appeal generation (if denied)
-        if denial_reason:
-            appeal_result = await run_full_appeal_workflow(
-                patient_id=patient_id,
-                drug_name=drug_name,
-                denial_reason=denial_reason,
-                prescriber_name=prescriber_name,
-                prescriber_npi=prescriber_npi,
-                prescriber_specialty=prescriber_specialty,
-                prescriber_phone=prescriber_phone,
-                practice_name=practice_name,
-                payer=payer
-            )
+        # Run the full PA workflow
+        pa_result = await run_full_pa_workflow(
+            patient_id=patient_id,
+            drug_name=drug_name,
+            prescriber_name=prescriber_name,
+            prescriber_npi=prescriber_npi,
+            prescriber_specialty=prescriber_specialty,
+            prescriber_phone=prescriber_phone,
+            practice_name=practice_name,
+            payer=payer
+        )
 
+        # Day 1: Decision based on scoring
+        if pa_result.get("recommendation") in ["APPROVE", "LIKELY_APPROVE"]:
             timeline.append({
                 "day": 1,
-                "event": "Appeal generated and submitted",
-                "status": "appealed",
-                "description": f"Formal appeal letter generated for {drug_name}"
+                "event": "Approved - criteria met",
+                "status": "approved",
+                "description": f"PA for {drug_name} approved without delay"
+            })
+            final_outcome = "approved"
+        else:
+            timeline.append({
+                "day": 1,
+                "event": f"Denied - {pa_result.get('missing_criteria', ['criteria not met'])[0] if pa_result.get('missing_criteria') else 'criteria not met'}",
+                "status": "denied",
+                "description": f"PA for {drug_name} denied"
             })
 
-        # Day 3: Final resolution (peer review)
-        timeline.append({
-            "day": 3,
-            "event": "Peer review completed",
-            "status": "resolved",
-            "description": f"Peer-to-peer review conducted for {drug_name} request"
-        })
+            # Day 1: Appeal generation (if denied)
+            if denial_reason:
+                appeal_result = await run_full_appeal_workflow(
+                    patient_id=patient_id,
+                    drug_name=drug_name,
+                    denial_reason=denial_reason,
+                    prescriber_name=prescriber_name,
+                    prescriber_npi=prescriber_npi,
+                    prescriber_specialty=prescriber_specialty,
+                    prescriber_phone=prescriber_phone,
+                    practice_name=practice_name,
+                    payer=payer
+                )
 
-        final_outcome = "approved_after_appeal" if denial_reason else "approved"
+                timeline.append({
+                    "day": 1,
+                    "event": "Appeal generated and submitted",
+                    "status": "appealed",
+                    "description": f"Formal appeal letter generated for {drug_name}"
+                })
 
-    return {
-        "patient": pa_result.get("patient", "Unknown"),
-        "drug": drug_name,
-        "timeline": timeline,
-        "final_outcome": final_outcome,
-        "pa_score": pa_result.get("score", 0),
-        "pa_recommendation": pa_result.get("recommendation", "UNKNOWN"),
-        "workflow_steps_completed": len(timeline)
-    }
+            # Day 3: Final resolution (peer review)
+            timeline.append({
+                "day": 3,
+                "event": "Peer review completed",
+                "status": "resolved",
+                "description": f"Peer-to-peer review conducted for {drug_name} request"
+            })
+
+            final_outcome = "approved_after_appeal" if denial_reason else "approved"
+
+        return {
+            "patient": pa_result.get("patient", "Unknown"),
+            "drug": drug_name,
+            "timeline": timeline,
+            "final_outcome": final_outcome,
+            "pa_score": pa_result.get("score", 0),
+            "pa_recommendation": pa_result.get("recommendation", "UNKNOWN"),
+            "workflow_steps_completed": len(timeline)
+        }
+    except Exception as e:
+        logger.error(f"Error simulating PA lifecycle: {e}")
+        return {"error": str(e), "success": False}
 
 
 async def _single_pa_score(pid: str, drug_name: str) -> dict:
